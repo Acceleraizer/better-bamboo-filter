@@ -4,7 +4,7 @@ DEPDIR=$(SRCDIR)/include
 BUILDDIR=build
 OBJDIR=$(BUILDDIR)/obj
 
-_OBJ=bamboo.o test.o SpookyV2.o
+_OBJ=bamboo.o test.o SpookyV2.o segment.o
 OBJ=$(patsubst %,$(OBJDIR)/%,$(_OBJ))
 LIBS=-lstdc++
 
