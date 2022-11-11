@@ -17,7 +17,7 @@ Bamboo::Bamboo(int num__segments, int bucket_idx_len, int fgpt_size,
 {
     cout << "Creating bamboo with " << _num_segments << " _segments" << endl; 
     for (int idx = 0; idx < _num_segments; ++idx) {
-        _segments[idx] = new Segment(1 << bucket_idx_len, fgpt_size, fgpt_per_bucket);
+        _segments[idx] = new Segment(1 << bucket_idx_len, fgpt_size, fgpt_per_bucket, 0);
     }
 
     srand(time(NULL));
@@ -92,8 +92,7 @@ bool Bamboo::_cuckoo(Segment *segment, u32 bi_main, u32 bi_alt, u8 fgpt,
         u32 chain_len)
 {
     if (chain_len == _chain_max) {
-        /* Do some error handling! */
-        cout << "Chain max " << _chain_max << " reached!" << endl;
+        cout << "Chain max " << _chain_max << " reached, attempt to expand segment" << endl;
         return false;
     }
 
@@ -126,7 +125,7 @@ bool Bamboo::_cuckoo(Segment *segment, u32 bi_main, u32 bi_alt, u8 fgpt,
 
     /* Both buckets are filled by the same fingerprint - nothing we can evict */
     cout << "Both buckets filled by the same fingerprint - cuckoo not possible" << endl;
-    return false;
+    throw std::exception("Bucket capacity reached");
 
 evict:
     /* Insert the current fingerprint in the new vacancy */
@@ -148,15 +147,24 @@ evict:
     
 }
 
-
 /* Expands the filter by adding a new segment and relocating fingerprints
  * based on "partial-key linear hashing". */
 bool Bamboo::expand(u32 seg_idx)
 {
-    cerr << "UNIMPLEMENTED" << endl;
-    return false;
-}
+    int expansion_count = ++_segments[seg_idx]->expansion_count;
+    if (expansion_count >= _fgpt_size)
+        throw std::exception("Bamboo max expansion capacity breached");
+    
+    u32 new_idx = seg_idx | (1<<(expansion_count+_seg_idx_base));
 
+    cout << "Expanding segment " << seg_idx << " into segment " << new_idx; 
+
+    _segments[new_idx] = new Segment(1 << _bucket_idx_len, _fgpt_size, _fgpt_per_bucket, expansion_count);
+
+    for (int i = 0; i < (1 << _bucket_idx_len); i++) 
+        _segments[seg_idx]->buckets[i].split_bucket(_segments[new_idx]->buckets[i], expansion_count);
+    return true;
+}
 
 /* Removes a copy of *elt* from the filter */
 bool Bamboo::remove(int elt)

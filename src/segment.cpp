@@ -73,6 +73,16 @@ void Bucket::insert_fgpt_at(int idx, u8 fgpt)
     _bits[idx] |= (1<<7);
 }
 
+void Bucket::split_bucket(Bucket destination, int separation_level) 
+{
+    u8 mask = 1<<7 | 1<<separation_level;
+    for (u32 idx = 0; idx < _bits.size(); ++idx) {
+        if(mask & _bits[idx]) {
+            destination.insert_fgpt(_bits[idx]);
+            _bits[idx] = 0;
+        }
+    }
+}
 
 u32 Bucket::occupancy()
 {
@@ -82,11 +92,6 @@ u32 Bucket::occupancy()
     }
     return cnt;
 }
-
-
-
-
-
 
 u32 Segment::occupancy()
 {

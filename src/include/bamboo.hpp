@@ -39,14 +39,18 @@ struct Bucket {
     u8 remove_fgpt_at(int idx);
     void insert_fgpt_at(int idx, u8 fgpt);
 
+    void split_bucket(Bucket bucket, int separation_level);
+
     u32 occupancy();
 };
 
 
 struct Segment {
     vector<Bucket> buckets;
+    int expansion_count;
     
-    Segment(int num_buckets, int fpgt_size, int fgpt_per_bucket)
+    Segment(int num_buckets, int fpgt_size, int fgpt_per_bucket, int expansion__count) :
+            expansion_count(expansion__count)
     {
         buckets = vector<Bucket>(num_buckets, Bucket(fgpt_per_bucket));
     }
