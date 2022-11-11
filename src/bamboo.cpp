@@ -7,7 +7,7 @@
 /* Bamboo Implementation */
 
 /* Constructor. Seeds the hash functions and initializes the segments */
-Bamboo::Bamboo(int num__segments, int bucket_idx_len, int fgpt_size, 
+Bamboo::Bamboo(int bucket_idx_len, int fgpt_size, 
         int fgpt_per_bucket, int seg_idx_base) : 
             _num_segments(1 << seg_idx_base),
             _bucket_idx_len(bucket_idx_len),

@@ -72,7 +72,7 @@ struct Bamboo {
 
     u32 _chain_max = 500;
 
-    Bamboo(int num_segments, int bucket_idx_len, int fgpt_size, 
+    Bamboo(int bucket_idx_len, int fgpt_size, 
             int fgpt_per_bucket, int seg_idx_base);
     ~Bamboo();
 
@@ -109,8 +109,15 @@ struct CountingBamboo {
     vector<Bamboo*> bamboo_layers;
     int _depth;
     int _base_expn;
+    
+    int _max_depth;
+    int _seg_idx_base;
+    int _bucket_idx_len;
+    int _fgpt_size;
+    int _fgpt_per_bucket;
+    int _seg_idx_base;
 
-
+    CountingBamboo::CountingBamboo(int max_depth, int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, int seg_idx_base);
     CountingBamboo(int base_expn, vector<int> num_segments, vector<int> buckets_per_segment,
             vector<int> fgpt_size, vector<int> fgpt_per_bucket);
     ~CountingBamboo();
