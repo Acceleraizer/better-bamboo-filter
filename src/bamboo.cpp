@@ -125,7 +125,7 @@ bool Bamboo::_cuckoo(Segment *segment, u32 bi_main, u32 bi_alt, u8 fgpt,
 
     /* Both buckets are filled by the same fingerprint - nothing we can evict */
     cout << "Both buckets filled by the same fingerprint - cuckoo not possible" << endl;
-    throw std::exception("Bucket capacity reached");
+    throw std::runtime_error("Bucket capacity reached");
 
 evict:
     /* Insert the current fingerprint in the new vacancy */
@@ -152,8 +152,8 @@ evict:
 bool Bamboo::expand(u32 seg_idx)
 {
     int expansion_count = ++_segments[seg_idx]->expansion_count;
-    if (expansion_count >= _fgpt_size)
-        throw std::exception("Bamboo max expansion capacity breached");
+    if (expansion_count >= _fgpt_size) 
+        throw std::runtime_error("Bamboo max expansion capacity breached");
     
     u32 new_idx = seg_idx | (1<<(expansion_count+_seg_idx_base));
 

@@ -1,16 +1,18 @@
 #include <random>
 #include <time.h>
+#include <exception>
 #include "include/bamboo.hpp"
 
 
 /* Counting Bamboo Implementation */
 
 
-CountingBamboo::CountingBamboo(int max_depth, int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, int seg_idx_base) :
+CountingBamboo::CountingBamboo(int max_depth, int bucket_idx_len, int fgpt_size, 
+        int fgpt_per_bucket, int seg_idx_base) :
+            _seg_idx_base(seg_idx_base),
             _bucket_idx_len(bucket_idx_len),
             _fgpt_size(fgpt_size),
-            _fgpt_per_bucket(fgpt_per_bucket),
-            _seg_idx_base(seg_idx_base)
+            _fgpt_per_bucket(fgpt_per_bucket)
 {
     bamboo_layers.push_back(new Bamboo(_bucket_idx_len, _fgpt_size, _fgpt_per_bucket, _seg_idx_base));
 }
@@ -65,7 +67,7 @@ void CountingBamboo::increment(int elt)
         }
     }
     if (_depth == _max_depth)
-        throw new std::exception("Max depth reached");
+        throw std::runtime_error("Max depth reached");
     bamboo_layers.push_back(new Bamboo(_bucket_idx_len, _fgpt_size, _fgpt_per_bucket, _seg_idx_base));
     bamboo_layers[_depth]->insert(elt);
     _depth += 1;
@@ -80,5 +82,5 @@ void CountingBamboo::decrement(int elt)
             return;
         }
     }
-    throw new std::exception("Can't decrement, item not found in filter");
+    throw std::runtime_error("Can't decrement, item not found in filter");
 }

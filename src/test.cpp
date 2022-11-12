@@ -120,5 +120,5 @@ Bamboo init_default_bbf()
     int fgpt_size = 7;
     int fgpt_per_bucket = 8;
     int seg_idx_base = 4;
-    return Bamboo(-1, bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base);
+    return Bamboo(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base);
 }
