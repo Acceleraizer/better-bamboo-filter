@@ -21,6 +21,13 @@ BambooBase::BambooBase(int bucket_idx_len, int fgpt_size,
     cout << "Alt bucket seed = " << _alt_seed << endl;
 }
 
+BambooBase::~BambooBase()
+{
+}
+
+// Segment* BambooBase::_get_segment(u32 seg_idx) {}
+// bool BambooBase::overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, u8 fgpt) {}
+
 Bamboo::Bamboo(int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, int seg_idx_base) 
     : BambooBase(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base)
 {
@@ -78,7 +85,7 @@ bool BambooBase::insert(int elt)
             || _cuckoo(segment, seg_idx, bidx1, bidx2, fgpt, 0); 
 }
 
-bool BambooOverflow::insert(int elt)
+bool BambooOverflow::insert(int elt) 
 {
     if(BambooBase::insert(elt))
     {
@@ -220,7 +227,7 @@ void BambooOverflow::expand(int seg_idx)
     base_seg->overflow = nullptr;
     while(overflow)
     {
-        for (u32 i = 0; i < (1 << _bucket_idx_len); i++) 
+        for (int i = 0; i < (1 << _bucket_idx_len); i++) 
         {   
             vector<u8> fgpts = overflow->buckets[i].retrieve_all();
             for(u8 fgpt : fgpts)

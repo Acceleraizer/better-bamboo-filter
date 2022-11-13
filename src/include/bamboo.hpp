@@ -75,7 +75,7 @@ struct BambooBase {
     ~BambooBase();
 
     int count(int elt);
-    bool insert(int elt);
+    virtual bool insert(int elt);
     bool remove(int elt);
 
     void adjust_to(int elt, int cnt);
@@ -92,8 +92,8 @@ struct BambooBase {
         return _h.Hash32(&elt, 4, _seed);
     }
 
-    virtual Segment *_get_segment(u32 seg_idx);
-    virtual bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, u8 fgpt);
+    virtual Segment *_get_segment(u32 seg_idx) = 0;
+    virtual bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, u8 fgpt) = 0;
 };
 
 struct Bamboo : BambooBase {
@@ -103,13 +103,13 @@ struct Bamboo : BambooBase {
             int fgpt_per_bucket, int seg_idx_base);
     ~Bamboo();
 
-    inline Segment *_get_segment(u32 seg_idx)
+    inline Segment *_get_segment(u32 seg_idx) override
     {
         if (_segments[seg_idx])
             return _segments[seg_idx];
         return nullptr;
     }
-    bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, u8 fgpt);
+    bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, u8 fgpt) override;
 
     u32 occupancy();
     u32 capacity();
@@ -127,16 +127,16 @@ struct BambooOverflow : BambooBase {
             int fgpt_per_bucket, int seg_idx_base);
     ~BambooOverflow();
 
-    bool insert(int elt);
+    bool insert(int elt) override;
     void expand(int seg_idx);
 
-    inline Segment *_get_segment(u32 seg_idx)
+    inline Segment *_get_segment(u32 seg_idx) override
     {
         if (_segments[seg_idx])
             return _segments[seg_idx];
         return nullptr;
     }
-    bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, u8 fgpt);
+    bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, u8 fgpt) override;
 
     // u32 occupancy();
     // u32 capacity();

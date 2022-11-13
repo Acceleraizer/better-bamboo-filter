@@ -15,10 +15,14 @@ int main()
 {
     cout << "\n==\nRun tests\n==\n" << endl;
 
-    // hash_tests();
-    // bamboo_tests_simple();
-    // bamboo_tests_cuckoo();
-    bamboo_tests_fill();
+    try {
+        hash_tests();
+        bamboo_tests_simple();
+        bamboo_tests_cuckoo();
+    } catch (std::exception& e) {
+        cout << "bucket full or something, error:" << e.what() << endl;
+    }
+    // bamboo_tests_fill();
 
     cout <<  "\n==\nTests Complete\n==\n" << endl;
 }
@@ -76,12 +80,12 @@ void bamboo_tests_cuckoo()
 
     Bamboo bbf = init_default_bbf();
     int elt = 0;
-    u32 hash = bbf._compute_hash(elt);
-    Segment *seg = bbf._find_segment(hash);
 
-    u32 bidx1, bidx2;
     u8 fgpt;
-    bbf._extract(hash, fgpt, bidx1, bidx2);
+    u32 bidx1, bidx2, seg_idx;
+    bbf._extract(elt, fgpt, seg_idx, bidx1, bidx2);
+
+    Segment *seg = bbf._get_segment(seg_idx);
     cout << "Test elt " << elt << ": fgpt = " << bitset<8>(fgpt)
         << " buckets = " << bidx1 << ", " << bidx2 << endl;
 
