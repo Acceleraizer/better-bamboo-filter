@@ -84,6 +84,17 @@ void Bucket::split_bucket(Bucket destination, int separation_level)
     }
 }
 
+vector<u8> Bucket::retrieve_all()
+{
+    vector<u8> result;
+    u8 mask = 1<<7;
+    for (u32 idx = 0; idx < _bits.size(); ++idx) {
+        if (mask & _bits[idx])
+            result.push_back((mask-1) & _bits[idx]);
+    }
+    return result;
+}
+
 u32 Bucket::occupancy()
 {
     u32 cnt = 0;
