@@ -160,13 +160,13 @@ void Bucket::split_bucket(Bucket &dst, int sep_lvl, u8 fgpt_size)
 }
 
 
-vector<u8> Bucket::retrieve_all()
+vector<u32> Bucket::retrieve_all(u8 fgpt_size)
 {
-    vector<u8> result;
-    u8 mask = 1<<7;
+    vector<u32> result;
+    u32 fgpt;
     for (u32 idx = 0; idx < _len; ++idx) {
-        if (mask & _bits[idx])
-            result.push_back((mask-1) & _bits[idx]);
+        if ((fgpt = get_fgpt_at(idx, fgpt_size)))
+            result.push_back(fgpt);
     }
     return result;
 }

@@ -5,6 +5,7 @@ using std::cout, std::endl;
 
 Bamboo init_bbf_default();
 Bamboo init_bbf_larger();
+CountingBamboo init_cbbf_larger();
 
 void hash_tests();
 void bamboo_tests_simple();
@@ -12,23 +13,36 @@ void bamboo_tests_cuckoo();
 void bamboo_tests_fill();
 void bamboo_tests_larger_simple();
 void bamboo_tests_larger_fill();
+void cbamboo_tests_larger_count();
 
 
 /* Wrap the tests in try - catch statements */
 int main()
 {
     cout << "\n======\nRun tests\n======\n" << endl;
+    auto seed = time(NULL);
+    cout << "\n ### SEED = " << seed << " ### \n" << endl;
+
+    /* Use to set seed */
+    // seed = 1668564475;
+    srand(seed);
 
     // hash_tests();
     // bamboo_tests_simple();
     // bamboo_tests_cuckoo();
-    bamboo_tests_fill();
+    // bamboo_tests_fill();
     // bamboo_tests_larger_simple();
-    bamboo_tests_larger_fill();
+    // bamboo_tests_larger_fill();
+
+    cbamboo_tests_larger_count();
 
     cout <<  "\n======\nTests Complete\n======\n" << endl;
 }
 
+
+/* 
+ * Test definitions
+ */
 
 void hash_tests()
 {
@@ -44,11 +58,13 @@ void hash_tests()
 }
 
 
-void print_count(Bamboo &bbf, int elt)
+void print_count_bbf(Bamboo &bbf, int elt)
 {
     cout << "count(" << elt << "): " << bbf.count(elt) << endl;
 
 }
+
+/* Bamboo tests */
 
 void bamboo_tests_simple()
 {
@@ -58,17 +74,18 @@ void bamboo_tests_simple()
     try{
         for (int i=0; i<2*bbf._fgpt_per_bucket; ++i) {
             bbf.insert(1);
-            print_count(bbf, 1);
+            print_count_bbf(bbf, 1);
         }
         for (int i=0; i<2*bbf._fgpt_per_bucket; ++i) {
             bbf.remove(1);
-            print_count(bbf, 1);
+            print_count_bbf(bbf, 1);
         }
         for (int i=0; i<2*bbf._fgpt_per_bucket; ++i) {
             bbf.insert(2);
             bbf.insert(3);
-            print_count(bbf, 2);
-            print_count(bbf, 3);
+            print_count_bbf(bbf, 2);
+            print_count_bbf(bbf, 3);
+            print_count_bbf(bbf, 4);
         }
         /* When cuckoo chaining is added, this should test the stop condition */
         bbf.insert(2);
@@ -140,17 +157,18 @@ void bamboo_tests_larger_simple()
     try{
         for (int i=0; i<2*bbf._fgpt_per_bucket; ++i) {
             bbf.insert(1);
-            print_count(bbf, 1);
+            print_count_bbf(bbf, 1);
         }
         for (int i=0; i<2*bbf._fgpt_per_bucket; ++i) {
             bbf.remove(1);
-            print_count(bbf, 1);
+            print_count_bbf(bbf, 1);
         }
         for (int i=0; i<2*bbf._fgpt_per_bucket; ++i) {
             bbf.insert(2);
             bbf.insert(3);
-            print_count(bbf, 2);
-            print_count(bbf, 3);
+            print_count_bbf(bbf, 2);
+            print_count_bbf(bbf, 3);
+            print_count_bbf(bbf, 4);
         }
         /* When cuckoo chaining is added, this should test the stop condition */
         bbf.insert(2);
@@ -179,6 +197,62 @@ void bamboo_tests_larger_fill()
 }
 
 
+/* Counting Bamboo tests */
+
+
+void cbamboo_tests_larger_count()
+{
+    cout << "\n ++++ Begin counting bamboo larger fill test ++++ \n" << endl;
+
+    CountingBamboo cbbf = init_cbbf_larger();
+
+    for (int i=0; i<64; ++i) {
+        cbbf.increment(1);
+        cout << cbbf.count(1) << " " << flush;
+    } 
+    cout << endl;
+
+    for (int i=0; i<64; ++i) {
+        cbbf.decrement(1);
+        cout << cbbf.count(1) << " " << flush;
+    } 
+    cout << endl;
+
+    cout << "\n Now count two elements \n" << endl;
+
+    /* Prints triplets of counts of 1,2,3. 
+     * Expected outcome: count of 3 should always be 0. */
+    for (int i=0; i<64; ++i) {
+        cbbf.increment(1);
+        cbbf.increment(2);
+        cout << "(" << cbbf.count(1) << " " << cbbf.count(2) 
+            << " " << flush << cbbf.count(3) << ") " << flush;
+    } 
+    for (int i=0; i<64; ++i) {
+        cbbf.decrement(1);
+        cbbf.decrement(2);
+        cout << "(" << cbbf.count(1) << " " << cbbf.count(2) 
+            << " " << flush << cbbf.count(3) << ") " << flush;
+    } 
+}
+
+void cbamboo_test_count_max()
+{
+    CountingBamboo cbbf = init_cbbf_larger();
+    int elt = 99;
+
+    try {
+        while (true) {
+        }
+    } catch (std::exception& e) {
+        cout << "bucket full or something, error:" << e.what() << endl;
+    }
+
+}
+
+
+/* Default filters for testing */
+
 
 Bamboo init_bbf_default()
 {
@@ -197,4 +271,16 @@ Bamboo init_bbf_larger()
     int fgpt_per_bucket = 8;
     int seg_idx_base = 4;
     return Bamboo(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base);
+}
+
+
+CountingBamboo init_cbbf_larger()
+{
+    int bucket_idx_len = 8;
+    int fgpt_size = 15;
+    int fgpt_per_bucket = 8;
+    int seg_idx_base = 4;
+    int max_depth = 12;
+    return CountingBamboo(max_depth, bucket_idx_len, fgpt_size, 
+        fgpt_per_bucket, seg_idx_base);
 }

@@ -51,7 +51,7 @@ struct Bucket {
     u32 remove_fgpt_at(int idx, u8 fgpt_size);
     void insert_fgpt_at(int idx, u32 fgpt, u8 fgpt_size);
 
-    vector<u8> retrieve_all();
+    vector<u32> retrieve_all(u8 fgpt_size);
     void split_bucket(Bucket &dst, int sep_lvl, u8 fgpt_size);
 
     u32 occupancy(u8 fgpt_size);
@@ -70,6 +70,7 @@ struct Segment {
         if (fgpt_size != 7 && fgpt_size != 15 && fgpt_size != 23)
             throw std::runtime_error("Fgpt size not supported");
         buckets = vector<Bucket>(num_buckets);
+        overflow = nullptr;
         for (int i=0; i<num_buckets; ++i) {
             buckets[i].initialize(fgpt_per_bucket, fgpt_size);
         }

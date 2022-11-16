@@ -14,7 +14,6 @@ BambooBase::BambooBase(int bucket_idx_len, int fgpt_size,
             _seg_idx_base(seg_idx_base) 
 {
     cout << "Creating bamboo with " << _num_segments << " _segments" << endl; 
-    srand(time(NULL));
     
     _bucket_mask = (1<<_bucket_idx_len)-1;
     _seed = rand();
@@ -245,14 +244,14 @@ void BambooOverflow::expand(int seg_idx)
     {
         for (int i = 0; i < (1 << _bucket_idx_len); i++) 
         {   
-            vector<u8> fgpts = overflow->buckets[i].retrieve_all();
-            for(u8 fgpt : fgpts)
+            vector<u32> fgpts = overflow->buckets[i].retrieve_all(_fgpt_size);
+            for(u32 fgpt : fgpts)
             {
                 Segment *insert_segment = (1<<_expand_base) & fgpt ? new_seg : base_seg;
                 u32 bidx2 = _alt_bucket(fgpt, i);
                 insert_segment->buckets[i].insert_fgpt(fgpt, _fgpt_size)
-                || insert_segment->buckets[bidx2].insert_fgpt(fgpt, _fgpt_size)
-                || _cuckoo(insert_segment, seg_idx, i, bidx2, fgpt, 1);
+                    || insert_segment->buckets[bidx2].insert_fgpt(fgpt, _fgpt_size)
+                    || _cuckoo(insert_segment, seg_idx, i, bidx2, fgpt, 1);
             }
         }
         overflow = overflow->overflow;
