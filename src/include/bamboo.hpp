@@ -161,7 +161,7 @@ struct BambooOverflow : BambooBase {
 
     inline Segment *_get_segment(u32 seg_idx) override
     {
-        if (_segments[seg_idx])
+        if (seg_idx < _segments.size())
             return _segments[seg_idx];
         return nullptr;
     }
@@ -172,7 +172,7 @@ struct BambooOverflow : BambooBase {
 };
 
 struct CountingBamboo {
-    vector<Bamboo*> bamboo_layers;
+    vector<BambooBase*> bamboo_layers;
     int _depth;
     int _base_expn;
     
@@ -181,11 +181,12 @@ struct CountingBamboo {
     int _bucket_idx_len;
     int _fgpt_size;
     int _fgpt_per_bucket;
+    bool _bamboo_implementation; // true = BambooOverflow, false = Bamboo
 
     CountingBamboo(int max_depth, int bucket_idx_len, int fgpt_size, 
-            int fgpt_per_bucket, int seg_idx_base);
-    CountingBamboo(int base_expn, vector<int> num_segments, vector<int> buckets_per_segment,
-            vector<int> fgpt_size, vector<int> fgpt_per_bucket);
+            int fgpt_per_bucket, int seg_idx_base, bool bamboo_implementation);
+    // CountingBamboo(int base_expn, vector<int> num_segments, vector<int> buckets_per_segment,
+    //         vector<int> fgpt_size, vector<int> fgpt_per_bucket);
     ~CountingBamboo();
 
     int count(int elt);

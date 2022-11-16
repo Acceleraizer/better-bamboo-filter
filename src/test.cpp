@@ -5,7 +5,7 @@ using std::cout, std::endl;
 
 Bamboo init_bbf_default();
 Bamboo init_bbf_larger();
-CountingBamboo init_cbbf_larger();
+CountingBamboo init_cbbf_larger(bool is_overflow);
 
 void hash_tests();
 void bamboo_tests_simple();
@@ -204,7 +204,7 @@ void cbamboo_tests_larger_count()
 {
     cout << "\n ++++ Begin counting bamboo larger fill test ++++ \n" << endl;
 
-    CountingBamboo cbbf = init_cbbf_larger();
+    CountingBamboo cbbf = init_cbbf_larger(true);
 
     for (int i=0; i<64; ++i) {
         cbbf.increment(1);
@@ -238,7 +238,7 @@ void cbamboo_tests_larger_count()
 
 void cbamboo_test_count_max()
 {
-    CountingBamboo cbbf = init_cbbf_larger();
+    CountingBamboo cbbf = init_cbbf_larger(false);
     int elt = 99;
 
     try {
@@ -274,7 +274,7 @@ Bamboo init_bbf_larger()
 }
 
 
-CountingBamboo init_cbbf_larger()
+CountingBamboo init_cbbf_larger(bool is_overflow)
 {
     int bucket_idx_len = 8;
     int fgpt_size = 15;
@@ -282,5 +282,5 @@ CountingBamboo init_cbbf_larger()
     int seg_idx_base = 4;
     int max_depth = 12;
     return CountingBamboo(max_depth, bucket_idx_len, fgpt_size, 
-        fgpt_per_bucket, seg_idx_base);
+        fgpt_per_bucket, seg_idx_base, is_overflow);
 }

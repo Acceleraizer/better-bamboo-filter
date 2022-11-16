@@ -8,23 +8,26 @@
 
 
 CountingBamboo::CountingBamboo(int max_depth, int bucket_idx_len, int fgpt_size, 
-        int fgpt_per_bucket, int seg_idx_base) :
+        int fgpt_per_bucket, int seg_idx_base, bool bamboo_implementation) :
             _seg_idx_base(seg_idx_base),
             _bucket_idx_len(bucket_idx_len),
             _fgpt_size(fgpt_size),
-            _fgpt_per_bucket(fgpt_per_bucket)
+            _fgpt_per_bucket(fgpt_per_bucket),
+            _bamboo_implementation(bamboo_implementation)
 {
     _depth = 1;
-    bamboo_layers.push_back(new Bamboo(_bucket_idx_len, _fgpt_size, _fgpt_per_bucket, _seg_idx_base));
+    if(_bamboo_implementation)
+        bamboo_layers.push_back(new BambooOverflow(_bucket_idx_len, _fgpt_size, _fgpt_per_bucket, _seg_idx_base));
+    else
+        bamboo_layers.push_back(new Bamboo(_bucket_idx_len, _fgpt_size, _fgpt_per_bucket, _seg_idx_base));
 }
 
-CountingBamboo::CountingBamboo(int base_expn, vector<int> num_segments, 
-        vector<int> buckets_per_segment, 
-        vector<int> fgpt_size, vector<int> fgpt_per_bucket)
-{
+// CountingBamboo::CountingBamboo(int base_expn, vector<int> num_segments, 
+//         vector<int> buckets_per_segment, 
+//         vector<int> fgpt_size, vector<int> fgpt_per_bucket)
+// {
 
-}
-
+// }
 
 CountingBamboo::~CountingBamboo()
 {
@@ -69,8 +72,10 @@ void CountingBamboo::increment(int elt)
     }
     if (_depth == _max_depth)
         throw std::runtime_error("Max depth reached");
-    bamboo_layers.push_back(
-        new Bamboo(_bucket_idx_len, _fgpt_size, _fgpt_per_bucket, _seg_idx_base));
+    if(_bamboo_implementation)
+        bamboo_layers.push_back(new BambooOverflow(_bucket_idx_len, _fgpt_size, _fgpt_per_bucket, _seg_idx_base));
+    else
+        bamboo_layers.push_back(new Bamboo(_bucket_idx_len, _fgpt_size, _fgpt_per_bucket, _seg_idx_base));
     bamboo_layers[_depth]->insert(elt);
     _depth += 1;
 }
