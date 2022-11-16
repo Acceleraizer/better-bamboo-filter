@@ -20,9 +20,6 @@ typedef uint8_t u8;
 extern int TEST_ENDIANNESS;
 extern int CBBF_LITTLE_ENDIAN;
 
-
-
-
 struct Bucket {
     u8 *_bits;    /* in memory: flag bit is to the right of the fgpt bits */
     u16 _len;

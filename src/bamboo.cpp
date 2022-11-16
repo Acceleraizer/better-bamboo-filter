@@ -60,6 +60,12 @@ BambooOverflow::BambooOverflow(int bucket_idx_len, int fgpt_size,
             new Segment(1 << bucket_idx_len, fgpt_size, fgpt_per_bucket, 0));
 }
 
+BambooOverflow::~BambooOverflow()
+{
+    for (Segment *it : _segments)
+        delete it;
+}
+
 /* Counts the number of copies of *elt* in the filter. */
 int BambooBase::count(int elt)
 {
@@ -143,6 +149,7 @@ bool BambooBase::_cuckoo(Segment *segment, int seg_idx, u32 bi_main, u32 bi_alt,
 
     int evict_bidx, evict_idx;
     u32 evict_fgpt;
+    int i = 0;
 
     /* Can fine-tune the eviction strategy ... */
 
@@ -167,11 +174,14 @@ bool BambooBase::_cuckoo(Segment *segment, int seg_idx, u32 bi_main, u32 bi_alt,
                 evict_bidx = bidx;
                 goto evict;
             }
+            i += 1;
         }
     }
 
     /* Both buckets are filled by the same fingerprint - nothing we can evict */
-    cout << "Both buckets filled by the same fingerprint - cuckoo not possible" << endl;
+
+    // In the overflow segment case, this is probably allowed (?)
+    cout << "This item is represented " << i << " times in the filter. Both buckets filled by the same fingerprint - cuckoo not possible" << endl;
     throw std::runtime_error("Bucket capacity reached");
 
 evict:
