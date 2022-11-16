@@ -1,8 +1,8 @@
-EXEC=betterbamboo_test.exe
+EXEC=betterbamboo_test.out
 SRCDIR=src
 DEPDIR=$(SRCDIR)/include
 BUILDDIR=build
-OBJDIR="$(BUILDDIR)/obj"
+OBJDIR=$(BUILDDIR)/obj
 
 _OBJ=cntbamboo.o bamboo.o test.o SpookyV2.o segment.o
 OBJ=$(patsubst %,$(OBJDIR)/%,$(_OBJ))
@@ -25,8 +25,11 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(DEP)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 dirs:
-	mkdir $(BUILDDIR) $(OBJDIR)
+	mkdir -p $(BUILDDIR) $(OBJDIR)
+
+
 
 .PHONY: clean
 clean:
-	rmdir /s $(BUILDDIR)
+	rm -f $(OBJDIR)/*.o $(BUILDDIR)/$(EXEC)
+	rm -df $(OBJDIR) $(BUILDDIR)

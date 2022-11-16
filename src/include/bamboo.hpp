@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <bitset>
 #include <iostream>
+#include <exception>
 
 #include "SpookyV2.h"
 
@@ -12,50 +13,71 @@ using std::vector, std::unordered_map, std::bitset;
 using std::cout, std::endl, std::cerr, std::flush;
 
 typedef uint32_t u32;
+typedef uint16_t u16;
 typedef uint8_t u8;
 
-// inline u32 segment_idx(u32 hash, u32 seg_start, u32 seg_len) {
-//     return (hash >> seg_start) & ((1<< seg_len) - 1);
-// }
+
+extern int TEST_ENDIANNESS;
+extern int CBBF_LITTLE_ENDIAN;
+
+
+
 
 struct Bucket {
-    vector<u8> _bits;    /* first bit: occupancy flag
-                         * next 7 bits: fingerprint */
+    u8 *_bits;    /* in memory: flag bit is to the right of the fgpt bits */
+    u16 _len;
 
-    Bucket(int capacity)
-    {
-        _bits = vector<u8>(capacity, 0);
-    }
+    Bucket() { }
+    ~Bucket() { delete[] _bits; }
 
-    int vacant_idx();
-    bool check_fgpt(u8 fgpt, int idx);
-    int find_fgpt(u8 fgpt); /* Returns the index where the first fingerprint is found */
-    int count_fgpt(u8 fpgt);
-    bool insert_fgpt(u8 fgpt);
-    bool remove_fgpt(u8 fgpt);
+    /* Must be called after initialization to allocate the array.
+     * This is here because I have yet to study copy-semantics, and
+     * including this directly in the constructor gives issues. */
+    void initialize(int capacity, int fgpt_size);
+
+    // void _flip_if_big_endian(u32 &value);
+
+    bool _occupied_idx (int idx, u8 fgpt_size);
+    int _vacant_idx(u8 fgpt_size);
+    bool check_fgpt(u32 fgpt, int idx, u8 fgpt_size);
+    /* Returns the index where the first fingerprint is found */
+    int find_fgpt(u32 fgpt, u8 fgpt_size); 
+    int count_fgpt(u32 fpgt, u8 fgpt_size);
+    bool insert_fgpt(u32 fgpt, u8 fgpt_size);
+    bool remove_fgpt(u32 fgpt, u8 fgpt_size);
+
+    void reset_fgpt_at(int idx, u8 fgpt_size);
+    u32 get_fgpt_at(int idx, u8 fgpt_size);
+    u32 remove_fgpt_at(int idx, u8 fgpt_size);
+    void insert_fgpt_at(int idx, u32 fgpt, u8 fgpt_size);
+
     vector<u8> retrieve_all();
+    void split_bucket(Bucket &dst, int sep_lvl, u8 fgpt_size);
 
-    u8 remove_fgpt_at(int idx);
-    void insert_fgpt_at(int idx, u8 fgpt);
-
-    void split_bucket(Bucket bucket, int separation_level);
-
-    u32 occupancy();
+    u32 occupancy(u8 fgpt_size);
 };
 
 struct Segment {
     vector<Bucket> buckets;
     Segment *overflow;
     int expansion_count;
+    u8 fgpt_size;
     
-    Segment(int num_buckets, int fpgt_size, int fgpt_per_bucket, int expansion__count) :
-            expansion_count(expansion__count)
+    Segment(int num_buckets, u8 fgpt_size, int fgpt_per_bucket, int expansion__count) :
+            expansion_count(expansion__count),
+            fgpt_size(fgpt_size)
     {
-        buckets = vector<Bucket>(num_buckets, Bucket(fgpt_per_bucket));
+        if (fgpt_size != 7 && fgpt_size != 15 && fgpt_size != 23)
+            throw std::runtime_error("Fgpt size not supported");
+        buckets = vector<Bucket>(num_buckets);
+        for (int i=0; i<num_buckets; ++i) {
+            buckets[i].initialize(fgpt_per_bucket, fgpt_size);
+        }
     }
 
     u32 occupancy();
 };
+
 
 
 struct BambooBase {
@@ -67,6 +89,7 @@ struct BambooBase {
     SpookyHash _h;
     u32 _seed;
     u32 _alt_seed;
+    u32 _bucket_mask;
 
     u32 _chain_max = 500;
 
@@ -79,13 +102,14 @@ struct BambooBase {
     bool remove(int elt);
 
     void adjust_to(int elt, int cnt);
-    bool _cuckoo(Segment *segment, int seg_idx, u32 bi_main, u32 bi_alt, u8 fgpt, u32 chain_len);
+    bool _cuckoo(Segment *segment, int seg_idx, u32 bi_main, u32 bi_alt, 
+            u32 fgpt, u32 chain_len);
     u32 _find_segment_idx(u32 hash);
-    bool _extract(int elt, u8 &fgpt, u32 &seg_idx, u32 &bidx1, u32 &bidx2); 
+    bool _extract(int elt, u32 &fgpt, u32 &seg_idx, u32 &bidx1, u32 &bidx2); 
 
-    inline u32 _alt_bucket(u8 fgpt, u32 bidx)
+    inline u32 _alt_bucket(u32 fgpt, u32 bidx)
     {
-        return bidx ^ (u8) _h.Hash32(&fgpt, 4, _alt_seed);
+        return (bidx ^ _h.Hash32(&fgpt, 4, _alt_seed)) & _bucket_mask;
     }
     inline u32 _compute_hash(int elt)
     {
@@ -93,8 +117,10 @@ struct BambooBase {
     }
 
     virtual Segment *_get_segment(u32 seg_idx) = 0;
-    virtual bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, u8 fgpt) = 0;
+    virtual bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, 
+            u32 bi_alt, u32 fgpt) = 0;
 };
+
 
 struct Bamboo : BambooBase {
     unordered_map<u32, Segment*> _segments;
@@ -109,11 +135,13 @@ struct Bamboo : BambooBase {
             return _segments[seg_idx];
         return nullptr;
     }
-    bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, u8 fgpt) override;
+    bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, 
+            u32 bi_alt, u32 fgpt) override;
 
     u32 occupancy();
     u32 capacity();
 };
+
 
 struct BambooOverflow : BambooBase {
     int _expand_prompt;
@@ -136,7 +164,7 @@ struct BambooOverflow : BambooBase {
             return _segments[seg_idx];
         return nullptr;
     }
-    bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, u8 fgpt) override;
+    bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, u32 fgpt) override;
 
     // u32 occupancy();
     // u32 capacity();

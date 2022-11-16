@@ -15,10 +15,14 @@ BambooBase::BambooBase(int bucket_idx_len, int fgpt_size,
 {
     cout << "Creating bamboo with " << _num_segments << " _segments" << endl; 
     srand(time(NULL));
+    
+    _bucket_mask = (1<<_bucket_idx_len)-1;
     _seed = rand();
     _alt_seed = rand();
     cout << "Seed = " << _seed << endl;
     cout << "Alt bucket seed = " << _alt_seed << endl;
+    // CBBF_LITTLE_ENDIAN = *((u8*) &TEST_ENDIANNESS) == TEST_ENDIANNESS;
+    // cout << (CBBF_LITTLE_ENDIAN ? "Little " : "Big ") << "Endian" << endl;
 }
 
 BambooBase::~BambooBase()
@@ -32,7 +36,8 @@ Bamboo::Bamboo(int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, int seg_i
     : BambooBase(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base)
 {
     for (int idx = 0; idx < _num_segments; ++idx)
-        _segments[idx] = new Segment(1 << bucket_idx_len, fgpt_size, fgpt_per_bucket, 0);
+        _segments[idx] = 
+            new Segment(1 << bucket_idx_len, fgpt_size, fgpt_per_bucket, 0);
 }
 
 
@@ -42,21 +47,24 @@ Bamboo::~Bamboo()
         delete it->second;
 }
 
-BambooOverflow::BambooOverflow(int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, int seg_idx_base) 
-    : BambooBase(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base)
+
+BambooOverflow::BambooOverflow(int bucket_idx_len, int fgpt_size, 
+        int fgpt_per_bucket, int seg_idx_base) :
+    BambooBase(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base)
 {
-    _expand_prompt = 1/2 * fgpt_per_bucket * (1 << bucket_idx_len);
+    _expand_prompt = fgpt_per_bucket * (1 << bucket_idx_len) * 1/2;
     _insert_count = 0;
     _next_seg_idx = 0;
     _expand_base = 0;
     for (int idx = 0; idx < _num_segments; ++idx)
-        _segments.push_back(new Segment(1 << bucket_idx_len, fgpt_size, fgpt_per_bucket, 0));
+        _segments.push_back(
+            new Segment(1 << bucket_idx_len, fgpt_size, fgpt_per_bucket, 0));
 }
 
 /* Counts the number of copies of *elt* in the filter. */
 int BambooBase::count(int elt)
 {
-    u8 fgpt;
+    u32 fgpt;
     u32 bidx1, bidx2, seg_idx;
     if (!_extract(elt, fgpt, seg_idx, bidx1, bidx2))
         return false;
@@ -64,8 +72,8 @@ int BambooBase::count(int elt)
     int count = 0;
     while (segment) 
     {
-        count += segment->buckets[bidx1].count_fgpt(fgpt) 
-            + segment->buckets[bidx2].count_fgpt(fgpt);
+        count += segment->buckets[bidx1].count_fgpt(fgpt, _fgpt_size) 
+            + segment->buckets[bidx2].count_fgpt(fgpt, _fgpt_size);
         segment = segment->overflow;
     }
     return count;
@@ -75,14 +83,14 @@ int BambooBase::count(int elt)
  * Will call cuckoo-insertion if both buckets of elt are full*/
 bool BambooBase::insert(int elt)
 {
-    u8 fgpt;
+    u32 fgpt;
     u32 bidx1, bidx2, seg_idx;
     if (!_extract(elt, fgpt, seg_idx, bidx1, bidx2))
         return false;
     Segment *segment = _get_segment(seg_idx);
-    return segment->buckets[bidx1].insert_fgpt(fgpt) 
-            || segment->buckets[bidx2].insert_fgpt(fgpt)
-            || _cuckoo(segment, seg_idx, bidx1, bidx2, fgpt, 0); 
+    return segment->buckets[bidx1].insert_fgpt(fgpt, _fgpt_size) 
+            || segment->buckets[bidx2].insert_fgpt(fgpt, _fgpt_size)
+            || _cuckoo(segment, seg_idx, bidx1, bidx2, fgpt, 1);
 }
 
 bool BambooOverflow::insert(int elt) 
@@ -109,32 +117,33 @@ bool BambooOverflow::insert(int elt)
 /* Removes a copy of *elt* from the filter */
 bool BambooBase::remove(int elt)
 {
-    u8 fgpt;
+    u32 fgpt;
     u32 bidx1, bidx2, seg_idx;
     if (!_extract(elt, fgpt, seg_idx, bidx1, bidx2))
         return false;
     Segment *segment = _get_segment(seg_idx);
     while (segment)
     {
-        if(segment->buckets[bidx1].remove_fgpt(fgpt)
-            || segment->buckets[bidx2].remove_fgpt(fgpt))
+        if(segment->buckets[bidx1].remove_fgpt(fgpt, _fgpt_size)
+            || segment->buckets[bidx2].remove_fgpt(fgpt, _fgpt_size))
             return true;
         segment = segment->overflow;
     }
     return false;
 }
 
+
 /* Main cuckoo-insertion logic */
-bool BambooBase::_cuckoo(Segment *segment, int seg_idx, u32 bi_main, u32 bi_alt, u8 fgpt, 
+bool BambooBase::_cuckoo(Segment *segment, int seg_idx, u32 bi_main, u32 bi_alt, u32 fgpt, 
         u32 chain_len)
 {
     if (chain_len == _chain_max) {
-        cout << "Chain max " << _chain_max << " reached, attempt to expand segment" << endl;
+        // cout << "Chain max " << _chain_max << " reached, attempt to expand segment" << endl;
         return overflow(segment, seg_idx, bi_main, bi_alt, fgpt);
     }
 
     int evict_bidx, evict_idx;
-    u8 evict_fgpt = -1;
+    u32 evict_fgpt;
 
     /* Can fine-tune the eviction strategy ... */
 
@@ -142,8 +151,9 @@ bool BambooBase::_cuckoo(Segment *segment, int seg_idx, u32 bi_main, u32 bi_alt,
      * fingerprint.*/
     evict_bidx = bi_alt;
     evict_idx = rand() % _fgpt_per_bucket;
-    if (!segment->buckets[evict_bidx].check_fgpt(fgpt, evict_idx)) {
-        evict_fgpt = segment->buckets[evict_bidx].remove_fgpt_at(evict_idx);
+    if (!segment->buckets[evict_bidx].check_fgpt(fgpt, evict_idx, _fgpt_size)) {
+        evict_fgpt = segment->buckets[evict_bidx]
+            .remove_fgpt_at(evict_idx, _fgpt_size);
         goto evict;
     }
 
@@ -152,8 +162,9 @@ bool BambooBase::_cuckoo(Segment *segment, int seg_idx, u32 bi_main, u32 bi_alt,
      * the logic of the original 2014 Cuckoo filter paper. */
     for (int bidx : {bi_alt, bi_main}) {
         for (evict_idx = 0; evict_idx < _fgpt_per_bucket; ++evict_idx) {
-            if (!segment->buckets[bidx].check_fgpt(fgpt, evict_idx)) {
-                evict_fgpt = segment->buckets[bidx].remove_fgpt_at(evict_idx);
+            if (!segment->buckets[bidx].check_fgpt(fgpt, evict_idx, _fgpt_size)) {
+                evict_fgpt = segment->buckets[bidx]
+                    .remove_fgpt_at(evict_idx, _fgpt_size);
                 evict_bidx = bidx;
                 goto evict;
             }
@@ -166,17 +177,13 @@ bool BambooBase::_cuckoo(Segment *segment, int seg_idx, u32 bi_main, u32 bi_alt,
 
 evict:
     /* Insert the current fingerprint in the new vacancy */
-    segment->buckets[evict_bidx].insert_fgpt_at(evict_idx, fgpt);
+    segment->buckets[evict_bidx].insert_fgpt_at(evict_idx, fgpt, _fgpt_size);
     /* Compute the other bucket for the evicted fingerprint */
     u32 alt_bidx = _alt_bucket(evict_fgpt, evict_bidx);
     
-    // cout << "Removed fgpt " << bitset<8>(evict_fgpt) << " from "
-    //     << evict_bidx << "(" << evict_idx << ")" << flush;    
-    // cout << "  >>  alt bucket = " << alt_bidx << endl;
-
     /* Try to insert the evicted fingerprint in the alt bucket*/
-    if (segment->buckets[alt_bidx].insert_fgpt(evict_fgpt)) {
-        cout << "Chain: " << chain_len << endl;
+    if (segment->buckets[alt_bidx].insert_fgpt(evict_fgpt, _fgpt_size)) {
+        // cout << "Chain: " << chain_len << endl;
         return true;
     }
 
@@ -185,7 +192,7 @@ evict:
 
 /* Expands the filter by adding a new segment and relocating fingerprints
  * based on "partial-key linear hashing". */
-bool Bamboo::overflow(Segment *segment, u32 seg_idx, u32 bidx1, u32 bidx2, u8 fgpt)
+bool Bamboo::overflow(Segment *segment, u32 seg_idx, u32 bidx1, u32 bidx2, u32 fgpt)
 {
     int expansion_count = ++_segments[seg_idx]->expansion_count;
     if (expansion_count >= _fgpt_size) 
@@ -193,35 +200,44 @@ bool Bamboo::overflow(Segment *segment, u32 seg_idx, u32 bidx1, u32 bidx2, u8 fg
     
     u32 new_idx = seg_idx | (1<<(expansion_count+_seg_idx_base));
 
-    cout << "Expanding segment " << seg_idx << " into segment " << new_idx; 
+    // cout << "Expanding segment " << seg_idx << " into segment " << new_idx 
+    //     << " : Expansion count = " << expansion_count  << endl; 
 
-    _segments[new_idx] = new Segment(1 << _bucket_idx_len, _fgpt_size, _fgpt_per_bucket, expansion_count);
+
+    auto t = new Segment(1 << _bucket_idx_len, _fgpt_size, 
+        _fgpt_per_bucket, expansion_count);
+    _segments[new_idx] = t;
 
     for (int i = 0; i < (1 << _bucket_idx_len); i++) 
-        _segments[seg_idx]->buckets[i].split_bucket(_segments[new_idx]->buckets[i], expansion_count);
-    
+        _segments[seg_idx]->buckets[i]
+            .split_bucket(_segments[new_idx]->buckets[i], expansion_count, _fgpt_size);
     if(1<<expansion_count & fgpt) {
         segment = _get_segment(new_idx);
         seg_idx = new_idx;
     }
-    return segment->buckets[bidx1].insert_fgpt(fgpt) 
-        || segment->buckets[bidx2].insert_fgpt(fgpt)
-        || _cuckoo(segment, seg_idx, bidx1, bidx2, fgpt, 0); 
+    return segment->buckets[bidx1].insert_fgpt(fgpt, _fgpt_size) 
+        || segment->buckets[bidx2].insert_fgpt(fgpt, _fgpt_size)
+        || _cuckoo(segment, seg_idx, bidx1, bidx2, fgpt, 1); 
 }
 
-bool BambooOverflow::overflow(Segment *segment, u32 seg_idx, u32 bidx1, u32 bidx2, u8 fgpt)
+
+bool BambooOverflow::overflow(Segment *segment, u32 seg_idx, u32 bidx1, 
+        u32 bidx2, u32 fgpt)
 {
     if(!segment->overflow)
-        segment->overflow = new Segment(1 << _bucket_idx_len, _fgpt_size, _fgpt_per_bucket, 0);
-    return _cuckoo(segment->overflow, seg_idx, bidx1, bidx2, fgpt, 0);
+        segment->overflow = 
+            new Segment(1 << _bucket_idx_len, _fgpt_size, _fgpt_per_bucket, 0);
+    return _cuckoo(segment->overflow, seg_idx, bidx1, bidx2, fgpt, 1);
 }
+
 
 void BambooOverflow::expand(int seg_idx)
 {
     Segment *base_seg = _segments[seg_idx];
-    Segment *new_seg = new Segment(1 << _bucket_idx_len, _fgpt_size, _fgpt_per_bucket, 0);
+    Segment *new_seg = 
+        new Segment(1 << _bucket_idx_len, _fgpt_size, _fgpt_per_bucket, 0);
     for (int i = 0; i < (1 << _bucket_idx_len); i++) 
-        base_seg->buckets[i].split_bucket(new_seg->buckets[i], 0);
+        base_seg->buckets[i].split_bucket(new_seg->buckets[i], 0, _fgpt_size);
 
     Segment *overflow = base_seg->overflow;
     base_seg->overflow = nullptr;
@@ -234,9 +250,9 @@ void BambooOverflow::expand(int seg_idx)
             {
                 Segment *insert_segment = (1<<_expand_base) & fgpt ? new_seg : base_seg;
                 u32 bidx2 = _alt_bucket(fgpt, i);
-                insert_segment->buckets[i].insert_fgpt(fgpt)
-                || insert_segment->buckets[bidx2].insert_fgpt(fgpt)
-                || _cuckoo(insert_segment, seg_idx, i, bidx2, fgpt, 0);
+                insert_segment->buckets[i].insert_fgpt(fgpt, _fgpt_size)
+                || insert_segment->buckets[bidx2].insert_fgpt(fgpt, _fgpt_size)
+                || _cuckoo(insert_segment, seg_idx, i, bidx2, fgpt, 1);
             }
         }
         overflow = overflow->overflow;
@@ -269,7 +285,7 @@ u32 BambooBase::_find_segment_idx(u32 hash)
 
 /* Writes the fingerprints and bucket indices from the elt into the
  * respective variables passed into the function. */
-bool BambooBase::_extract(int elt, u8 &fgpt, u32 &seg_idx, u32 &bidx1, u32 &bidx2)
+bool BambooBase::_extract(int elt, u32 &fgpt, u32 &seg_idx, u32 &bidx1, u32 &bidx2)
 {
     u32 hash = _compute_hash(elt);
     seg_idx = _find_segment_idx(hash);
@@ -277,9 +293,8 @@ bool BambooBase::_extract(int elt, u8 &fgpt, u32 &seg_idx, u32 &bidx1, u32 &bidx
         std::cerr << "Segment not found" << std::endl;
         return false;
     }
-    u32 bucket_mask = (1<<_bucket_idx_len)-1;
-    fgpt = (hash >> (_bucket_idx_len + _seg_idx_base)) & ((1<<7) - 1);
-    bidx1 = hash & bucket_mask;
+    fgpt = (hash >> (_bucket_idx_len + _seg_idx_base)) & ((1<<_fgpt_size) - 1);
+    bidx1 = hash & _bucket_mask;
     bidx2 = _alt_bucket(fgpt, bidx1);
     return true;
 }
