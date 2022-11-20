@@ -91,9 +91,17 @@ struct BambooBase {
 
     u32 _chain_max = 500;
 
+    /* statistics */
+    struct {
+        int _expand_count;
+        int _time;
+        int _seg_find_cnt;
+
+    } stats;
+
     BambooBase(int bucket_idx_len, int fgpt_size, 
             int fgpt_per_bucket, int seg_idx_base);
-    ~BambooBase();
+    virtual ~BambooBase();
 
     int count(int elt);
     virtual bool insert(int elt);
@@ -131,6 +139,7 @@ struct Bamboo : BambooBase {
     {
         if (_segments[seg_idx])
             return _segments[seg_idx];
+        _segments.erase(seg_idx);
         return nullptr;
     }
     bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, 

@@ -28,11 +28,11 @@ int main()
     srand(seed);
 
     // hash_tests();
-    // bamboo_tests_simple();
+    bamboo_tests_simple();
     // bamboo_tests_cuckoo();
-    // bamboo_tests_fill();
+    bamboo_tests_fill();
     // bamboo_tests_larger_simple();
-    // bamboo_tests_larger_fill();
+    bamboo_tests_larger_fill();
 
     cbamboo_tests_larger_count();
 

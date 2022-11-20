@@ -4,6 +4,7 @@
         "ostream": "cpp",
         "iostream": "cpp",
         "stdexcept": "cpp",
-        "bitset": "cpp"
+        "bitset": "cpp",
+        "chrono": "cpp"
     }
 }

@@ -1,5 +1,7 @@
 #include <random>
 #include <time.h>
+#include <chrono>
+#include <cstring>
 #include "include/bamboo.hpp"
 
 /* Bamboo Implementation */
@@ -22,6 +24,8 @@ BambooBase::BambooBase(int bucket_idx_len, int fgpt_size,
     cout << "Alt bucket seed = " << _alt_seed << endl;
     // CBBF_LITTLE_ENDIAN = *((u8*) &TEST_ENDIANNESS) == TEST_ENDIANNESS;
     // cout << (CBBF_LITTLE_ENDIAN ? "Little " : "Big ") << "Endian" << endl;
+    
+    std::memset(&stats, 0, sizeof(stats));
 }
 
 BambooBase::~BambooBase()
@@ -60,6 +64,7 @@ BambooOverflow::BambooOverflow(int bucket_idx_len, int fgpt_size,
             new Segment(1 << bucket_idx_len, fgpt_size, fgpt_per_bucket, 0));
 }
 
+
 BambooOverflow::~BambooOverflow()
 {
     for (Segment *it : _segments)
@@ -90,18 +95,33 @@ bool BambooBase::insert(int elt)
 {
     u32 fgpt;
     u32 bidx1, bidx2, seg_idx;
+    Segment *segment;
+    bool r = false;
+
+    // auto t1 = std::chrono::high_resolution_clock::now();
+    
     if (!_extract(elt, fgpt, seg_idx, bidx1, bidx2))
-        return false;
-    Segment *segment = _get_segment(seg_idx);
-    return segment->buckets[bidx1].insert_fgpt(fgpt, _fgpt_size) 
+        goto ret;
+    segment = _get_segment(seg_idx);
+    r = segment->buckets[bidx1].insert_fgpt(fgpt, _fgpt_size) 
             || segment->buckets[bidx2].insert_fgpt(fgpt, _fgpt_size)
             || _cuckoo(segment, seg_idx, bidx1, bidx2, fgpt, 1);
+ret:
+    // auto t2 = std::chrono::high_resolution_clock::now();
+    // auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
+    // stats._time += ns.count();
+
+    return r;
 }
+
 
 bool BambooOverflow::insert(int elt) 
 {
+    bool r = false;
+    
     if(BambooBase::insert(elt))
     {
+        // auto t1 = std::chrono::high_resolution_clock::now();
         _insert_count += 1;
         if(_insert_count == _expand_prompt)
         {
@@ -114,9 +134,14 @@ bool BambooOverflow::insert(int elt)
                 _expand_base += 1;
             }
         }
-        return true;
+        r = true;
+        // auto t2 = std::chrono::high_resolution_clock::now();
+        // auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
+        // stats._time += ns.count();
     }
-    return false;
+
+    
+    return r;
 }
 
 /* Removes a copy of *elt* from the filter */
@@ -203,6 +228,9 @@ evict:
  * based on "partial-key linear hashing". */
 bool Bamboo::overflow(Segment *segment, u32 seg_idx, u32 bidx1, u32 bidx2, u32 fgpt)
 {
+    auto t1 = std::chrono::high_resolution_clock::now();
+
+    ++stats._expand_count;
     int expansion_count = ++_segments[seg_idx]->expansion_count;
     if (expansion_count >= _fgpt_size) 
         throw std::runtime_error("Bamboo max expansion capacity breached");
@@ -212,10 +240,10 @@ bool Bamboo::overflow(Segment *segment, u32 seg_idx, u32 bidx1, u32 bidx2, u32 f
     // cout << "Expanding segment " << seg_idx << " into segment " << new_idx 
     //     << " : Expansion count = " << expansion_count  << endl; 
 
-
-    auto t = new Segment(1 << _bucket_idx_len, _fgpt_size, 
+    // cout << " :: old = " << _segments.bucket_count() ;
+    _segments[new_idx] = new Segment(1 << _bucket_idx_len, _fgpt_size, 
         _fgpt_per_bucket, expansion_count);
-    _segments[new_idx] = t;
+    // cout << " --> new = " << _segments.bucket_count() << endl;
 
     for (int i = 0; i < (1 << _bucket_idx_len); i++) 
         _segments[seg_idx]->buckets[i]
@@ -224,15 +252,23 @@ bool Bamboo::overflow(Segment *segment, u32 seg_idx, u32 bidx1, u32 bidx2, u32 f
         segment = _get_segment(new_idx);
         seg_idx = new_idx;
     }
-    return segment->buckets[bidx1].insert_fgpt(fgpt, _fgpt_size) 
+
+    bool r = segment->buckets[bidx1].insert_fgpt(fgpt, _fgpt_size) 
         || segment->buckets[bidx2].insert_fgpt(fgpt, _fgpt_size)
         || _cuckoo(segment, seg_idx, bidx1, bidx2, fgpt, 1); 
+
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
+    stats._time += ns.count();
+
+    return r;
 }
 
 
 bool BambooOverflow::overflow(Segment *segment, u32 seg_idx, u32 bidx1, 
         u32 bidx2, u32 fgpt)
 {
+    
     if(!segment->overflow)
         segment->overflow = 
             new Segment(1 << _bucket_idx_len, _fgpt_size, _fgpt_per_bucket, 0);
@@ -242,6 +278,10 @@ bool BambooOverflow::overflow(Segment *segment, u32 seg_idx, u32 bidx1,
 
 void BambooOverflow::expand(int seg_idx)
 {
+    auto t1 = std::chrono::high_resolution_clock::now();
+    
+
+    ++stats._expand_count;
     Segment *base_seg = _segments[seg_idx];
     Segment *new_seg = 
         new Segment(1 << _bucket_idx_len, _fgpt_size, _fgpt_per_bucket, 0);
@@ -267,6 +307,11 @@ void BambooOverflow::expand(int seg_idx)
         overflow = overflow->overflow;
     }
     _segments.push_back(new_seg);
+
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
+    stats._time += ns.count();
+
 }
 
 /* Inserts or removes an elt until it has the desired *cnt*. */
@@ -279,17 +324,28 @@ void BambooBase::adjust_to(int elt, int cnt)
 /* Finds the index of segment that stores a fingerprint associated with *hash*. */
 u32 BambooBase::_find_segment_idx(u32 hash)
 {
-    /* we do linear search for now yea */
     /* find the largest segment length that hashes to a valid segment*/
+    /* binary search */
     hash >>= _bucket_idx_len;
-    for (u32 mask = (1<<(_seg_idx_base+_fgpt_size)) - 1; 
-            mask != 0; 
-            mask >>= 1) {
-        // cout << mask << " " << (hash & mask) << endl;
-        if (_get_segment(hash & mask))
-            return hash & mask;
+    hash &= (1<<(_seg_idx_base+_fgpt_size)) - 1;
+    int bound = -1;
+    u32 mask;
+    for (int step = _seg_idx_base+_fgpt_size; step >= 1; step >>= 1) {
+        while (bound + step < 32) {
+            mask = (1 << (step + bound)) - 1;
+            // cout << bitset<32>(hash & mask) << " : mask len = " << step+bound << endl;
+            stats._seg_find_cnt++;
+            if (_get_segment(hash & mask))
+                bound += step;
+            else
+                break; 
+        }
     }
-    return -1;
+
+    if (bound == -1)
+        return -1;
+    else
+        return hash & ((1 << bound) - 1);
 }
 
 /* Writes the fingerprints and bucket indices from the elt into the
