@@ -38,16 +38,22 @@ BambooBase::~BambooBase()
 Bamboo::Bamboo(int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, int seg_idx_base) 
     : BambooBase(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base)
 {
-    for (int idx = 0; idx < _num_segments; ++idx)
-        _segments[idx] = 
-            new Segment(1 << bucket_idx_len, fgpt_size, fgpt_per_bucket, 0);
+    Segment *s;
+    _trie_head = new BitTrie();
+    for (int idx = 0; idx < _num_segments; ++idx) {
+        s = new Segment(1 << bucket_idx_len, fgpt_size, fgpt_per_bucket, 0);
+        _trie_head->insert(idx, seg_idx_base, s);
+    }
+    
+    cout << "Trie construction complete" << endl;
+    // _trie_head->dump();
 }
 
 
 Bamboo::~Bamboo()
 {
-    for (auto it = _segments.begin(); it != _segments.end(); ++it)
-        delete it->second;
+    /* The BitTrie destructor takes care of the rest */
+    delete _trie_head;
 }
 
 
@@ -76,9 +82,9 @@ int BambooBase::count(int elt)
 {
     u32 fgpt;
     u32 bidx1, bidx2, seg_idx;
-    if (!_extract(elt, fgpt, seg_idx, bidx1, bidx2))
+    Segment *segment;
+    if (!_extract(elt, fgpt, seg_idx, segment, bidx1, bidx2))
         return false;
-    Segment *segment = _get_segment(seg_idx);
     int count = 0;
     while (segment) 
     {
@@ -97,12 +103,17 @@ bool BambooBase::insert(int elt)
     u32 bidx1, bidx2, seg_idx;
     Segment *segment;
     bool r = false;
+    // std::chrono::_V2::high_resolution_clock::time_point t1,t2;
+    // std::chrono::_V2::system_clock::duration ns;
 
-    // auto t1 = std::chrono::high_resolution_clock::now();
+    // t1 = std::chrono::high_resolution_clock::now();
     
-    if (!_extract(elt, fgpt, seg_idx, bidx1, bidx2))
+    if (!_extract(elt, fgpt, seg_idx, segment, bidx1, bidx2))
         goto ret;
-    segment = _get_segment(seg_idx);
+    
+    // t2 = std::chrono::high_resolution_clock::now();
+    // ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
+    // stats._time += ns.count();
     r = segment->buckets[bidx1].insert_fgpt(fgpt, _fgpt_size) 
             || segment->buckets[bidx2].insert_fgpt(fgpt, _fgpt_size)
             || _cuckoo(segment, seg_idx, bidx1, bidx2, fgpt, 1);
@@ -149,9 +160,9 @@ bool BambooBase::remove(int elt)
 {
     u32 fgpt;
     u32 bidx1, bidx2, seg_idx;
-    if (!_extract(elt, fgpt, seg_idx, bidx1, bidx2))
+    Segment *segment;
+    if (!_extract(elt, fgpt, seg_idx, segment, bidx1, bidx2))
         return false;
-    Segment *segment = _get_segment(seg_idx);
     while (segment)
     {
         if(segment->buckets[bidx1].remove_fgpt(fgpt, _fgpt_size)
@@ -164,8 +175,8 @@ bool BambooBase::remove(int elt)
 
 
 /* Main cuckoo-insertion logic */
-bool BambooBase::_cuckoo(Segment *segment, int seg_idx, u32 bi_main, u32 bi_alt, u32 fgpt, 
-        u32 chain_len)
+bool BambooBase::_cuckoo(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, 
+        u32 fgpt, u32 chain_len)
 {
     if (chain_len == _chain_max) {
         // cout << "Chain max " << _chain_max << " reached, attempt to expand segment" << endl;
@@ -205,8 +216,11 @@ bool BambooBase::_cuckoo(Segment *segment, int seg_idx, u32 bi_main, u32 bi_alt,
 
     /* Both buckets are filled by the same fingerprint - nothing we can evict */
 
-    // In the overflow segment case, this is probably allowed (?)
-    cout << "This item is represented " << i << " times in the filter. Both buckets filled by the same fingerprint - cuckoo not possible" << endl;
+    /* In the overflow segment case, this is probably allowed (?) */
+    cout << "This item is represented " << i << " times in the filter."
+        << " Both buckets filled by the same fingerprint - cuckoo not possible" << endl;
+    cout << "Params: " << segment << " " << seg_idx << " " << bi_main << " " << bi_alt 
+        << " " << fgpt << " " << chain_len << endl;
     throw std::runtime_error("Bucket capacity reached");
 
 evict:
@@ -228,28 +242,34 @@ evict:
  * based on "partial-key linear hashing". */
 bool Bamboo::overflow(Segment *segment, u32 seg_idx, u32 bidx1, u32 bidx2, u32 fgpt)
 {
-    auto t1 = std::chrono::high_resolution_clock::now();
+    // auto t1 = std::chrono::high_resolution_clock::now();
 
     ++stats._expand_count;
-    int expansion_count = ++_segments[seg_idx]->expansion_count;
+    int expansion_count = ++segment->expansion_count;
     if (expansion_count >= _fgpt_size) 
         throw std::runtime_error("Bamboo max expansion capacity breached");
     
-    u32 new_idx = seg_idx | (1<<(expansion_count+_seg_idx_base));
+    u8 ilen = expansion_count+_seg_idx_base;
+    u32 new_idx = seg_idx | (1 << (ilen - 1));
 
-    // cout << "Expanding segment " << seg_idx << " into segment " << new_idx 
-    //     << " : Expansion count = " << expansion_count  << endl; 
-
-    // cout << " :: old = " << _segments.bucket_count() ;
-    _segments[new_idx] = new Segment(1 << _bucket_idx_len, _fgpt_size, 
+    // cout << "Expanding segment " << bitset<16>(seg_idx) << " into segment " << bitset<16>(new_idx) 
+    //     << " : Expansion count = " << expansion_count  
+    //     << " ilen = " << (u32) ilen << endl; 
+    Segment *new_segment = new Segment(1 << _bucket_idx_len, _fgpt_size, 
         _fgpt_per_bucket, expansion_count);
-    // cout << " --> new = " << _segments.bucket_count() << endl;
+    _trie_head->insert(new_idx, ilen, new_segment);
+    _trie_head->insert(seg_idx, ilen, segment);
+    _trie_head->clear(seg_idx, ilen-1);
+    // _trie_head->dump("");
+
+    // _segments[new_idx] = new Segment(1 << _bucket_idx_len, _fgpt_size, 
+    //     _fgpt_per_bucket, expansion_count);
 
     for (int i = 0; i < (1 << _bucket_idx_len); i++) 
-        _segments[seg_idx]->buckets[i]
-            .split_bucket(_segments[new_idx]->buckets[i], expansion_count, _fgpt_size);
-    if(1<<expansion_count & fgpt) {
-        segment = _get_segment(new_idx);
+        segment->buckets[i]
+            .split_bucket(new_segment->buckets[i], expansion_count, _fgpt_size);
+    if (1<<expansion_count & fgpt) {
+        segment = new_segment;
         seg_idx = new_idx;
     }
 
@@ -257,9 +277,9 @@ bool Bamboo::overflow(Segment *segment, u32 seg_idx, u32 bidx1, u32 bidx2, u32 f
         || segment->buckets[bidx2].insert_fgpt(fgpt, _fgpt_size)
         || _cuckoo(segment, seg_idx, bidx1, bidx2, fgpt, 1); 
 
-    auto t2 = std::chrono::high_resolution_clock::now();
-    auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
-    stats._time += ns.count();
+    // auto t2 = std::chrono::high_resolution_clock::now();
+    // auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
+    // stats._time += ns.count();
 
     return r;
 }
@@ -268,19 +288,18 @@ bool Bamboo::overflow(Segment *segment, u32 seg_idx, u32 bidx1, u32 bidx2, u32 f
 bool BambooOverflow::overflow(Segment *segment, u32 seg_idx, u32 bidx1, 
         u32 bidx2, u32 fgpt)
 {
-    
     if(!segment->overflow)
         segment->overflow = 
             new Segment(1 << _bucket_idx_len, _fgpt_size, _fgpt_per_bucket, 0);
-    return _cuckoo(segment->overflow, seg_idx, bidx1, bidx2, fgpt, 1);
+    bool r = _cuckoo(segment->overflow, seg_idx, bidx1, bidx2, fgpt, 1);
+    return r;
 }
 
 
 void BambooOverflow::expand(int seg_idx)
 {
-    auto t1 = std::chrono::high_resolution_clock::now();
+    // auto t1 = std::chrono::high_resolution_clock::now();
     
-
     ++stats._expand_count;
     Segment *base_seg = _segments[seg_idx];
     Segment *new_seg = 
@@ -308,9 +327,9 @@ void BambooOverflow::expand(int seg_idx)
     }
     _segments.push_back(new_seg);
 
-    auto t2 = std::chrono::high_resolution_clock::now();
-    auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
-    stats._time += ns.count();
+    // auto t2 = std::chrono::high_resolution_clock::now();
+    // auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
+    // stats._time += ns.count();
 
 }
 
@@ -321,59 +340,46 @@ void BambooBase::adjust_to(int elt, int cnt)
 }
 
 
-/* Finds the index of segment that stores a fingerprint associated with *hash*. */
-u32 BambooBase::_find_segment_idx(u32 hash)
-{
-    /* find the largest segment length that hashes to a valid segment*/
-    /* binary search */
-    hash >>= _bucket_idx_len;
-    hash &= (1<<(_seg_idx_base+_fgpt_size)) - 1;
-    int bound = -1;
-    u32 mask;
-    for (int step = _seg_idx_base+_fgpt_size; step >= 1; step >>= 1) {
-        while (bound + step < 32) {
-            mask = (1 << (step + bound)) - 1;
-            // cout << bitset<32>(hash & mask) << " : mask len = " << step+bound << endl;
-            stats._seg_find_cnt++;
-            if (_get_segment(hash & mask))
-                bound += step;
-            else
-                break; 
-        }
-    }
-
-    if (bound == -1)
-        return -1;
-    else
-        return hash & ((1 << bound) - 1);
-}
-
 /* Writes the fingerprints and bucket indices from the elt into the
  * respective variables passed into the function. */
-bool BambooBase::_extract(int elt, u32 &fgpt, u32 &seg_idx, u32 &bidx1, u32 &bidx2)
+bool BambooBase::_extract(int elt, u32 &fgpt, u32 &seg_idx, Segment *&segment, 
+        u32 &bidx1, u32 &bidx2)
 {
     u32 hash = _compute_hash(elt);
-    seg_idx = _find_segment_idx(hash);
-    if (seg_idx == (u32) -1) {
-        std::cerr << "Segment not found" << std::endl;
-        return false;
-    }
+    // seg_idx = _find_segment_idx(hash);
+    // if (seg_idx == (u32) -1) {
+    //     std::cerr << "Segment not found" << std::endl;
+    //     return false;
+    // }
+    // cout << "a" << flush;
+    segment = _get_segment(hash >> _bucket_idx_len, seg_idx);
+    // cout << "b" << flush;
     fgpt = (hash >> (_bucket_idx_len + _seg_idx_base)) & ((1<<_fgpt_size) - 1);
     bidx1 = hash & _bucket_mask;
     bidx2 = _alt_bucket(fgpt, bidx1);
+    // cout << elt << ": " << fgpt << " " << seg_idx 
+    //     << " " << segment << " (" << bidx1 << " " << bidx2 << ") || " << flush; 
     return true;
 }
+
+u32 count_helper(BitTrie *node)
+{
+    if (!node)
+        return 0;
+    u32 tot = 0;
+    if (node->ptr)
+        tot += node->ptr->occupancy();
+    tot += count_helper(node->zero);
+    tot += count_helper(node->one);
+
+    return tot;
+}
+
 
 /* Computes the number of fingerprints stored */
 u32 Bamboo::occupancy()
 {
-    u32 cnt = 0;
-    for (auto item : _segments) {
-        if (!item.second)
-            continue;
-        cnt += item.second->occupancy();
-    }
-    return cnt;
+    return count_helper(_trie_head);
 }
 
 /* Returns the total number of fingerprints that can be stored. */

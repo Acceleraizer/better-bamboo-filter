@@ -24,7 +24,7 @@ int main()
     cout << "\n ### SEED = " << seed << " ### \n" << endl;
 
     /* Use to set seed */
-    // seed = 1668564475;
+    // seed = 1669093733;
     srand(seed);
 
     // hash_tests();
@@ -34,7 +34,7 @@ int main()
     // bamboo_tests_larger_simple();
     bamboo_tests_larger_fill();
 
-    cbamboo_tests_larger_count();
+    // cbamboo_tests_larger_count();
 
     cout <<  "\n======\nTests Complete\n======\n" << endl;
 }
@@ -105,9 +105,9 @@ void bamboo_tests_cuckoo()
 
         u32 fgpt;
         u32 bidx1, bidx2, seg_idx;
-        bbf._extract(elt, fgpt, seg_idx, bidx1, bidx2);
+        Segment *seg;
+        bbf._extract(elt, fgpt, seg_idx, seg, bidx1, bidx2);
 
-        Segment *seg = bbf._get_segment(seg_idx);
         cout << "Test elt " << elt << ": fgpt = " << bitset<8>(fgpt)
             << " buckets = " << bidx1 << ", " << bidx2 << endl;
 
@@ -138,7 +138,7 @@ void bamboo_tests_fill()
     
     try {
         while (bbf.insert(elt)) {
-            if (elt % 1000 == 0) cout << elt << " " << std::flush;
+            if (elt % 10000 == 0) cout << elt << " " << std::flush;
             ++elt;
         }
     } catch (std::exception& e) {
@@ -187,7 +187,7 @@ void bamboo_tests_larger_fill()
     
     try {
         while (bbf.insert(elt)) {
-            if (elt % 1000 == 0) cout << elt << " " << std::flush;
+            if (elt % 1000000 == 0) cout << elt << " " << std::flush;
             ++elt;
         }
     } catch (std::exception& e) {

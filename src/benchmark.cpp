@@ -38,21 +38,18 @@ int main()
         t1 = std::chrono::high_resolution_clock::now();
 
         Bamboo bbf = init_bbf_larger();
-        cout << " :: " << bbf._segments.bucket_count() << " " << endl;
 
         for (int i = 0; i < counts; ++i)
         {
             r = rand() % 100000;
             bbf.insert(r);
         }
-        cout << " :: " << bbf._segments.bucket_count() << " " << endl;
         cout << " :: expansions: " << bbf.stats._expand_count << endl;
-        cout << " normal test done. Time = " << bbf.stats._time << endl;
+        cout << " normal test done. ** Time = " << bbf.stats._time << " ** " << endl;
         
         t2 = std::chrono::high_resolution_clock::now();
         auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
         cout << "++++ Total: " << ns.count() << " ns" << endl;
-        cout << "++   Segment finds = " << bbf.stats._seg_find_cnt << endl;
     }
 
 
@@ -70,12 +67,11 @@ int main()
             bbf.insert(r);
         }
         cout << " :: expansions: " << bbf.stats._expand_count << endl;
-        cout << " overflow test done. Time = " << bbf.stats._time << endl;
+        cout << " overflow test done. ** Time = " << bbf.stats._time << " ** " << endl;
 
         t2 = std::chrono::high_resolution_clock::now();
         auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
         cout << "++++ Total: " << ns.count() << " ns" << endl;
-        cout << "++   Segment finds = " << bbf.stats._seg_find_cnt << endl;
     }
     sleep(2);
     // Bamboo bbf = init_bbf_larger();

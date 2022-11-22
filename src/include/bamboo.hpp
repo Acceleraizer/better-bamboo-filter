@@ -2,16 +2,19 @@
 #define BAMBOO
 
 #include <vector>
+#include <chrono>
 #include <unordered_map>
 #include <bitset>
 #include <iostream>
 #include <exception>
+#include <string>
 
 #include "SpookyV2.h"
 
 using std::vector, std::unordered_map, std::bitset;
 using std::cout, std::endl, std::cerr, std::flush;
 
+typedef uint64_t u64;
 typedef uint32_t u32;
 typedef uint16_t u16;
 typedef uint8_t u8;
@@ -19,6 +22,9 @@ typedef uint8_t u8;
 
 extern int TEST_ENDIANNESS;
 extern int CBBF_LITTLE_ENDIAN;
+
+
+
 
 struct Bucket {
     u8 *_bits;    /* in memory: flag bit is to the right of the fgpt bits */
@@ -77,6 +83,23 @@ struct Segment {
 };
 
 
+struct BitTrie {
+    Segment *ptr;
+
+    BitTrie *zero;
+    BitTrie *one;
+
+    BitTrie();
+    ~BitTrie();
+
+    void insert(u64 str, u8 len, Segment* val);
+    void clear(u64 str, u8 len);
+    Segment *retrieve(u64 str);
+    Segment *retrieve(u64 str, u32 &depth);
+    void dump(std::string s);
+    void dump();
+};
+
 
 struct BambooBase {
     int _num_segments;
@@ -108,10 +131,11 @@ struct BambooBase {
     bool remove(int elt);
 
     void adjust_to(int elt, int cnt);
-    bool _cuckoo(Segment *segment, int seg_idx, u32 bi_main, u32 bi_alt, 
+    bool _cuckoo(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, 
             u32 fgpt, u32 chain_len);
-    u32 _find_segment_idx(u32 hash);
-    bool _extract(int elt, u32 &fgpt, u32 &seg_idx, u32 &bidx1, u32 &bidx2); 
+    // u32 _find_segment_idx(u32 hash);
+    bool _extract(int elt, u32 &fgpt, u32 &seg_idx, Segment *&segment,
+            u32 &bidx1, u32 &bidx2); 
 
     inline u32 _alt_bucket(u32 fgpt, u32 bidx)
     {
@@ -122,26 +146,34 @@ struct BambooBase {
         return _h.Hash32(&elt, 4, _seed);
     }
 
-    virtual Segment *_get_segment(u32 seg_idx) = 0;
+    virtual Segment *_get_segment(u32 hash, u32 &seg_idx) = 0;
     virtual bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, 
             u32 bi_alt, u32 fgpt) = 0;
 };
 
 
 struct Bamboo : BambooBase {
-    unordered_map<u32, Segment*> _segments;
+    // unordered_map<u32, Segment*> _segments;
+    BitTrie *_trie_head;
 
     Bamboo(int bucket_idx_len, int fgpt_size, 
             int fgpt_per_bucket, int seg_idx_base);
     ~Bamboo();
 
-    inline Segment *_get_segment(u32 seg_idx) override
+
+    inline Segment *_get_segment(u32 hash, u32 &seg_idx)
     {
-        if (_segments[seg_idx])
-            return _segments[seg_idx];
-        _segments.erase(seg_idx);
-        return nullptr;
+        // auto t1 = std::chrono::high_resolution_clock::now();
+        seg_idx = hash;
+        u32 depth = 0;
+        Segment *s = _trie_head->retrieve(hash, depth);
+        seg_idx &= (1 << depth) - 1;
+        // auto t2 = std::chrono::high_resolution_clock::now();
+        // auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
+        // stats._time += ns.count();
+        return s;
     }
+
     bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, 
             u32 bi_alt, u32 fgpt) override;
 
@@ -165,11 +197,23 @@ struct BambooOverflow : BambooBase {
     bool insert(int elt) override;
     void expand(int seg_idx);
 
-    inline Segment *_get_segment(u32 seg_idx) override
+    inline Segment *_get_segment(u32 hash, u32 &seg_idx) override
     {
-        if (seg_idx < _segments.size())
-            return _segments[seg_idx];
-        return nullptr;
+        // auto t1 = std::chrono::high_resolution_clock::now();
+        u32 mask = (u32)-1;
+        
+        while ((hash & mask) >= _segments.size())
+        {
+            mask >>= 1;
+        }
+        seg_idx = hash & mask;
+        Segment *s = _segments[seg_idx];
+
+        // auto t2 = std::chrono::high_resolution_clock::now();
+        // auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
+        // stats._time += ns.count();
+
+        return s;
     }
     bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, u32 fgpt) override;
 
