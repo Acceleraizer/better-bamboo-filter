@@ -20,15 +20,11 @@ typedef uint16_t u16;
 typedef uint8_t u8;
 
 
-extern int TEST_ENDIANNESS;
-extern int CBBF_LITTLE_ENDIAN;
-
-
-
 
 struct Bucket {
-    u8 *_bits;    /* in memory: flag bit is to the right of the fgpt bits */
-    u16 _len;
+    u8 *_bits;    /* Each fgpt is stored in a contiguous subarray along with
+                   * a flag bit. See implementation for details */
+    u16 _len;     /* Length of array allocated to *_bits* */
 
     Bucket() { }
     ~Bucket() { delete[] _bits; }
@@ -51,6 +47,7 @@ struct Bucket {
 
     void reset_fgpt_at(int idx, u8 fgpt_size);
     u32 get_fgpt_at(int idx, u8 fgpt_size);
+    u32 get_entry_at(int idx, u8 fgpt_size);
     u32 remove_fgpt_at(int idx, u8 fgpt_size);
     void insert_fgpt_at(int idx, u32 fgpt, u8 fgpt_size);
 
@@ -116,8 +113,10 @@ struct BambooBase {
 
     /* statistics */
     struct {
-        int _expand_count;
         int _time;
+        int _counter0;
+        int _counter1;
+        int _expand_count;
         int _seg_find_cnt;
 
     } stats;

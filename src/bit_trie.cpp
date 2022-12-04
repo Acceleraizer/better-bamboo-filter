@@ -59,7 +59,7 @@ Segment *BitTrie::retrieve(u64 str)
 {
     if (!(zero || one))
         return ptr;
-    BitTrie *next = str % 2 ? one : zero;
+    BitTrie *next = (str % 2) ? one : zero;
     return next->retrieve(str >> 1);
 }
 
@@ -81,9 +81,8 @@ void BitTrie::dump()
 
 void BitTrie::dump(std::string s)
 {
-    if (ptr) {
+    if (ptr) 
         cout << s << " " << ptr << endl;
-    }
     if (zero)
         zero->dump("0"+s);
     if (one)

@@ -2,9 +2,6 @@
 
 /* bucket implementations: assuming 7, 15, 23 or 31 bit fingerprints*/
 
-int TEST_ENDIANNESS = 1;
-int CBBF_LITTLE_ENDIAN;
-
 
 void Bucket::initialize(int capacity, int fgpt_size)
 {
@@ -14,24 +11,12 @@ void Bucket::initialize(int capacity, int fgpt_size)
 }
 
 
-// void Bucket::_flip_if_big_endian(u32 &fgpt) 
-// {
-//     if (CBBF_LITTLE_ENDIAN)
-//         return;
-    
-//     u8 *ptr = (u8*) &fgpt;
-//     *ptr ^= *(ptr + 3);
-//     *(ptr + 3) ^= *ptr; 
-//     *ptr ^= *(ptr + 3);
-//     *(ptr + 1) ^= *(ptr + 2);
-//     *(ptr + 2) ^= *(ptr + 1);
-//     *(ptr + 1) ^= *(ptr + 2);
-// }
-
+/* idx is the *real* rather than logical index of the slot 
+ * (ie. in units of u8) */
 bool Bucket::_occupied_idx(int idx, u8 fgpt_size)
 {
     u8 step = (fgpt_size + 7) / 8;
-    return (1 << 7) & _bits[idx+step-1];
+    return  _bits[idx+step-1] >> 7;
 }
 
 
@@ -68,6 +53,7 @@ int Bucket::find_fgpt(u32 fgpt, u8 fgpt_size)
     return -1;
 }
 
+
 int Bucket::count_fgpt(u32 fgpt, u8 fgpt_size)
 {
     int cnt = 0;
@@ -77,6 +63,20 @@ int Bucket::count_fgpt(u32 fgpt, u8 fgpt_size)
     } 
     return cnt;
 }
+
+
+void Bucket::insert_fgpt_at(int idx, u32 fgpt, u8 fgpt_size)
+{
+    u32 step = (fgpt_size + 7) / 8;
+
+    fgpt |= (1 << fgpt_size); // Occupancy bit
+    while (step--) {
+        _bits[idx] = (u8) (fgpt % (1 << 8));
+        fgpt >>= 8;
+        ++idx;
+    }
+}
+
 
 bool Bucket::insert_fgpt(u32 fgpt, u8 fgpt_size)
 {
@@ -88,6 +88,7 @@ bool Bucket::insert_fgpt(u32 fgpt, u8 fgpt_size)
     insert_fgpt_at(idx, fgpt, fgpt_size);
     return true;
 }
+
 
 bool Bucket::remove_fgpt(u32 fgpt, u8 fgpt_size)
 {
@@ -109,16 +110,21 @@ void Bucket::reset_fgpt_at(int idx, u8 fgpt_size)
 }
 
 
-u32 Bucket::get_fgpt_at(int idx, u8 fgpt_size)
+u32 Bucket::get_entry_at(int idx, u8 fgpt_size)
 {
-    u32 stored_fgpt = 0;
+    u32 stored_entry = 0;
     u32 step = (fgpt_size + 7) / 8;
     for (u32 i=0; i<step; ++i) {
-        stored_fgpt += _bits[idx+i] << (8*i);
+        stored_entry += (_bits[idx+i] << (8*i));
     }
-    // cout << "retrieved: " << bitset<16>(stored_fgpt) << endl; 
-    stored_fgpt &= ((1 << fgpt_size) - 1);
-    return stored_fgpt;
+    return stored_entry;
+}
+
+
+u32 Bucket::get_fgpt_at(int idx, u8 fgpt_size)
+{
+    /* Exclude the occupancy bit */
+    return get_entry_at(idx, fgpt_size) & ((1 << fgpt_size) - 1);
 }
 
 
@@ -130,31 +136,17 @@ u32 Bucket::remove_fgpt_at(int idx, u8 fgpt_size)
 }
 
 
-void Bucket::insert_fgpt_at(int idx, u32 fgpt, u8 fgpt_size)
-{
-    u32 step = (fgpt_size + 7) / 8;
-
-    fgpt |= (1 << fgpt_size); // occ bit
-    // cout << "insert " << bitset<32>(fgpt) << " step " << step << " --> ";
-    while (step--) {
-        _bits[idx] = (u8) fgpt;
-        fgpt >>= 8;
-        ++idx;
-    }
-    // cout << bitset<16>(get_fgpt_at(iidx, fgpt_size)) << endl;
-}
-
-
 void Bucket::split_bucket(Bucket &dst, int sep_lvl, u8 fgpt_size) 
 {
     u32 mask = (1 << fgpt_size) | (1 << sep_lvl);
     u32 step = (fgpt_size + 7) / 8;
-    u32 fgpt;
+    u32 entry;
+
     for (u32 idx = 0; idx < _len; idx += step) {
-        fgpt = get_fgpt_at(idx, fgpt_size);
-        if(mask & fgpt) {
+        entry = get_entry_at(idx, fgpt_size);
+        if((mask & entry) == mask) {
             reset_fgpt_at(idx, fgpt_size);
-            dst.insert_fgpt(fgpt, fgpt_size);
+            dst.insert_fgpt(entry, fgpt_size);
         }
     }
 }

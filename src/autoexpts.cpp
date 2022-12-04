@@ -15,63 +15,45 @@ CountingBamboo init_cbbf_larger(bool is_overflow);
 /* Run this test with Valgrind to see memory nsage */
 int main()
 {
+    /* Select the experiment configurations */
+    vector<int> counts;
+    cout << "Enter counts (0 to end) " << endl;
+    int count;
+    while ((cin >> count), count) {
+        counts.push_back(count);
+    }
+
+    /* Prepare outfile for writing results */
+    cout << "Enter outfile" << endl;
+    std::string OF;
+    cin >> OF;
+    std::ofstream outfile;
+    outfile.open(OF, std::ios::out);
+
+
     cout << "\n======\nRun tests\n======\n" << endl;
     auto seed = time(NULL);
     /* use to set seed */
     // seed = 1668564475;
-    // srand(seed);
+    srand(seed);
     cout << "\n ### SEED = " << seed << " ### \n" << endl;
 
 
-    sleep(1);
 
     int r;
-    int count = 50000;
-    int reps = 50;
+    // int counts = 150000;
+    int reps = 100;
 
     auto t1 = std::chrono::high_resolution_clock::now();
     auto t2 = t1;
 
-    srand(seed);
-    cout << " overflow test start " << endl;
-    {
-        u64 total_ns = 0;
-        u64 time_ns = 0;
-        u64 counter0 = 0;
-        u64 counter1 = 0;
 
-        for (int i= 0 ; i< reps; ++ i) {
-            BambooOverflow bbf = init_overflow_bbf_larger();
-            
-            t1 = std::chrono::high_resolution_clock::now();
-            for (int i = 0; i < count; ++i)
-            {
-                r = rand() % 100000;
-                bbf.insert(r);
-            }
-            cout << " :: expansions: " << bbf.stats._expand_count << endl;
-            // cout << " overflow test done. ** Time = " << bbf.stats._time << " ** " << endl;
-            time_ns += bbf.stats._time;
-            counter0 += bbf.stats._counter0;
-            counter1 += bbf.stats._counter1;
-
-            t2 = std::chrono::high_resolution_clock::now();
-            auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
-            total_ns += ns.count();
-        }
-        cout << "++++ \n Average total time: " << total_ns/reps << " ns" << endl;
-        cout << "Average op Time: " << time_ns/reps << " ns" << endl;
-        cout << "Average cuckoos " << counter0/reps << endl;
-        cout << "Average chain max " << counter1/reps << endl;
-    }
     sleep(1);
 
     cout << "\n normal test start " << endl;
+    for (int count: counts)
     {
         u64 total_ns = 0;
-        u64 time_ns = 0;
-        u64 counter0 = 0;
-        u64 counter1 = 0;
 
         for (int i= 0 ; i< reps; ++ i) {
             Bamboo bbf = init_bbf_larger();
@@ -82,40 +64,54 @@ int main()
                 r = rand() % 100000;
                 bbf.insert(r);
             }
-            cout << " :: expansions: " << bbf.stats._expand_count << endl;
+            // cout << " :: expansions: " << bbf.stats._expand_count << endl;
             // cout << " normal test done. ** Time = " << bbf.stats._time << " ** " << endl;
-            time_ns += bbf.stats._time;
-            counter0 += bbf.stats._counter0;
-            counter1 += bbf.stats._counter1;
             
             t2 = std::chrono::high_resolution_clock::now();
             auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
             total_ns += ns.count();
         }
 
-        cout << "++++ \n Average total time: " << total_ns/reps << " ns" << endl;
-        cout << "Average op Time :" << time_ns/reps << " ns" << endl;
-        cout << "Average cuckoos " << counter0/reps << endl;
-        cout << "Average chain max " << counter1/reps << endl;
+        cout << "++++ " << count << ": " << total_ns/reps << " ns" << endl;
+        outfile << count << "\t" << total_ns << "\t" << reps << "\n";
+    }
+
+    srand(seed);
+    sleep(1);
+    cout << " overflow test start " << endl;
+    for (int count: counts)
+    {
+        u64 total_ns = 0;
+        try {
+            for (int i= 0 ; i< reps; ++ i) {
+                BambooOverflow bbf = init_overflow_bbf_larger();
+                
+                t1 = std::chrono::high_resolution_clock::now();
+                for (int i = 0; i < count; ++i)
+                {
+                    r = rand() % 100000;
+                    bbf.insert(r);
+                }
+                // cout << " :: expansions: " << bbf.stats._expand_count << endl;
+                // cout << " overflow test done. ** Time = " << bbf.stats._time << " ** " << endl;
+
+                t2 = std::chrono::high_resolution_clock::now();
+                auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
+                total_ns += ns.count();
+            }
+        } catch (const std::exception &e) {
+            cout << e.what() << endl;
+            total_ns = -1;
+        }
+        
+        cout << "++++ " << count << ": " << total_ns/reps << " ns" << endl;
+        outfile << count << "\t" << total_ns << "\t" << reps << "\n";
     }
 
 
-    sleep(1);
-    // cout << " counting test start " << endl;
-    // srand(seed);
+   
+    outfile.close();
 
-    // {
-    //     CountingBamboo cbbf = init_cbbf_larger(true);
-
-    //     for (int i = 0; i < 100000; ++i)
-    //     {
-    //         r = rand() % 100000;
-    //         cbbf.increment(r);
-    //     }
-    // }
-    // cout << " counting test done " << endl;
-    // sleep(2);
-    
     cout <<  "\n======\nTests Complete\n======\n" << endl;
 }
 
