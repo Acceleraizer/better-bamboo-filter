@@ -5,26 +5,25 @@
 
 void Bucket::initialize(int capacity, int fgpt_size)
 {
-    _len = capacity * ((fgpt_size + 7) /8);
+    _len = capacity * ((_fgpt_size + 7) /8);
     _bits = new u8[_len]();
+    _fgpt_size = fgpt_size;
 }
 
-
-/* idx is the *real* rather than logical index of the slot 
- * (ie. in units of u8) */
-bool Bucket::_occupied_idx(int idx, u8 fgpt_size)
+/* idx is logical index */
+bool Bucket::_occupied_idx(int idx)
 {
-    u8 step = (fgpt_size + 7) / 8;
-    return  _bits[idx+step-1] >> 7;
+    u8 step = (_fgpt_size + 7) / 8;
+    return  _bits[step*(idx+1)-1] >> 7;
 }
 
 
 /* returns index of first bit of fgpt*/
-int Bucket::_vacant_idx(u8 fgpt_size)
+int Bucket::_vacant_idx()
 {   
-    u8 step = (fgpt_size + 7) / 8;
-    for (u32 idx = 0; idx <  _len; idx += step) {
-        if (!_occupied_idx(idx, fgpt_size) ) {
+    u8 step = (_fgpt_size + 7) / 8;
+    for (u32 idx = 0; idx <  _len/step; ++idx) {
+        if (!_occupied_idx(idx) ) {
             return idx;
         }
     }
@@ -32,19 +31,19 @@ int Bucket::_vacant_idx(u8 fgpt_size)
 }
 
 
-bool Bucket::check_fgpt(u32 fgpt, int idx, u8 fgpt_size)
+bool Bucket::check_fgpt(u32 fgpt, int idx)
 {
-    u32 stored_fgpt = get_fgpt_at(idx, fgpt_size);
+    u32 stored_fgpt = get_fgpt_at(idx);
     return (fgpt) == (stored_fgpt);
 }
 
 
-/* returns index of first bit of fgpt*/
-int Bucket::find_fgpt(u32 fgpt, u8 fgpt_size)
+/* returns logical index of fgpt*/
+int Bucket::find_fgpt(u32 fgpt)
 {
-    u32 step = (fgpt_size + 7) / 8;
-    for (u32 idx = 0; idx < _len; idx += step) {
-        if (check_fgpt(fgpt, idx, fgpt_size)) {
+    u32 step = (_fgpt_size + 7) / 8;
+    for (u32 idx = 0; idx < _len/step; ++idx) {
+        if (check_fgpt(fgpt, idx)) {
             return idx;
         }
     }
@@ -52,22 +51,23 @@ int Bucket::find_fgpt(u32 fgpt, u8 fgpt_size)
 }
 
 
-int Bucket::count_fgpt(u32 fgpt, u8 fgpt_size)
+int Bucket::count_fgpt(u32 fgpt)
 {
     int cnt = 0;
-    u32 step = (fgpt_size + 7) / 8;
-    for (u32 idx = 0; idx < _len; idx += step) {
-        cnt += check_fgpt(fgpt, idx, fgpt_size);
+    u32 step = (_fgpt_size + 7) / 8;
+
+    for (u32 idx = 0; idx < _len/step; ++idx) {
+        cnt += check_fgpt(fgpt, idx);
     } 
     return cnt;
 }
 
 
-void Bucket::insert_fgpt_at(int idx, u32 fgpt, u8 fgpt_size)
+void Bucket::insert_fgpt_at(int idx, u32 fgpt)
 {
-    u32 step = (fgpt_size + 7) / 8;
-
-    fgpt |= (1 << fgpt_size); // Occupancy bit
+    u32 step = (_fgpt_size + 7) / 8;
+    idx *= step;
+    fgpt |= (1 << _fgpt_size); // Occupancy bit
     while (step--) {
         _bits[idx] = (u8) (fgpt % (1 << 8));
         fgpt >>= 8;
@@ -76,43 +76,45 @@ void Bucket::insert_fgpt_at(int idx, u32 fgpt, u8 fgpt_size)
 }
 
 
-bool Bucket::insert_fgpt(u32 fgpt, u8 fgpt_size)
+bool Bucket::insert_fgpt(u32 fgpt)
 {
-    int idx = _vacant_idx(fgpt_size);
+    int idx = _vacant_idx();
     if (idx == -1) {
         return false;
     }
     
-    insert_fgpt_at(idx, fgpt, fgpt_size);
+    insert_fgpt_at(idx, fgpt);
     return true;
 }
 
 
-bool Bucket::remove_fgpt(u32 fgpt, u8 fgpt_size)
+bool Bucket::remove_fgpt(u32 fgpt)
 {
-    int idx = find_fgpt(fgpt, fgpt_size);
+    int idx = find_fgpt(fgpt);
     if (idx == -1)
         return false;
 
-    reset_fgpt_at(idx, fgpt_size);
+    reset_fgpt_at(idx);
     return true;
 }
 
 
-/* idx is index of first bit*/
-void Bucket::reset_fgpt_at(int idx, u8 fgpt_size)
+/* idx is logical index */
+void Bucket::reset_fgpt_at(int idx)
 {
-    u32 step = (fgpt_size + 7) / 8;
+    u32 step = (_fgpt_size + 7) / 8;
+    idx *= step;
     for (u32 i=0; i<step; ++i) {
         _bits[idx + i] = 0;
     }
 }
 
-/* idx is index of first bit*/
-u32 Bucket::get_entry_at(int idx, u8 fgpt_size)
+/* idx is logical index */
+u32 Bucket::get_entry_at(int idx)
 {
     u32 stored_entry = 0;
-    u32 step = (fgpt_size + 7) / 8;
+    u32 step = (_fgpt_size + 7) / 8;
+    idx *= step;
     for (u32 i=0; i<step; ++i) {
         stored_entry += (_bits[idx+i] << (8*i));
     }
@@ -120,66 +122,83 @@ u32 Bucket::get_entry_at(int idx, u8 fgpt_size)
 }
 
 
-u32 Bucket::get_fgpt_at(int idx, u8 fgpt_size)
+/* idx is logical index */
+u32 Bucket::get_fgpt_at(int idx)
 {
     /* Exclude the occupancy bit */
-    return get_entry_at(idx, fgpt_size) & ((1 << fgpt_size) - 1);
+    return get_entry_at(idx) & ((1 << _fgpt_size) - 1);
 }
 
 
-u32 Bucket::remove_fgpt_at(int idx, u8 fgpt_size)
+/* idx is logical index */
+u32 Bucket::remove_fgpt_at(int idx)
 {
-    u32 stored_fgpt = get_fgpt_at(idx, fgpt_size);    
-    reset_fgpt_at(idx, fgpt_size);
+    u32 stored_fgpt = get_fgpt_at(idx);    
+    reset_fgpt_at(idx);
     return stored_fgpt;
 }
 
 
-void Bucket::split_bucket(Bucket &dst, int sep_lvl, u8 fgpt_size) 
+void Bucket::split_bucket(Bucket &dst, int sep_lvl) 
 {
-    u32 mask = (1 << fgpt_size) | (1 << sep_lvl);
-    u32 step = (fgpt_size + 7) / 8;
+    u32 mask = (1 << _fgpt_size) | (1 << sep_lvl);
+    u32 step = (_fgpt_size + 7) / 8;
     u32 entry;
 
-    for (u32 idx = 0; idx < _len; idx += step) {
-        entry = get_entry_at(idx, fgpt_size);
+    for (u32 idx = 0; idx < _len/step; ++idx) {
+        entry = get_entry_at(idx);
         if((mask & entry) == mask) {
-            reset_fgpt_at(idx, fgpt_size);
-            dst.insert_fgpt(entry, fgpt_size);
+            reset_fgpt_at(idx);
+            dst.insert_fgpt(entry);
         }
     }
-    // cout << " " << occupancy(fgpt_size) << "+" << dst.occupancy(fgpt_size) << flush;
+    // cout << " " << occupancy(_fgpt_size) << "+" << dst.occupancy(_fgpt_size) << flush;
 }
 
 
-vector<u32> Bucket::retrieve_all(u8 fgpt_size)
+vector<u32> Bucket::retrieve_all()
 {
     vector<u32> result;
+    u32 step = (_fgpt_size + 7) / 8;
     u32 fgpt;
-    for (u32 idx = 0; idx < _len; ++idx) {
-        if ((fgpt = get_fgpt_at(idx, fgpt_size)))
+    for (u32 idx = 0; idx < _len/step; ++idx) {
+        if ((fgpt = get_fgpt_at(idx)))
             result.push_back(fgpt);
     }
     return result;
 }
 
 
-u32 Bucket::occupancy(u8 fgpt_size)
+u32 Bucket::occupancy()
 {
     u32 cnt = 0;
-    u32 step = (fgpt_size + 7) / 8;
-    for (u32 idx = 0; idx <  _len; idx += step) {
-        cnt += _occupied_idx(idx, fgpt_size);
+    u32 step = (_fgpt_size + 7) / 8;
+    for (u32 idx = 0; idx <  _len/step; ++idx) {
+        cnt += _occupied_idx(idx);
     }
     return cnt;
 }
+
+
+void Bucket::dump_bucket()
+{
+    cout << "Bucket dump: ";
+    u32 fgpt;
+    for (int i=0; i<_len; ++i){
+        fgpt = get_fgpt_at(i);
+        cout << bitset<16>(fgpt) << " ";
+    }
+    cout << endl;
+}
+
+
 
 
 u32 Segment::occupancy()
 {
     u32 cnt = 0;
     for (Bucket &b: buckets) {
-        cnt += b.occupancy(fgpt_size);
+        cnt += b.occupancy();
     }
     return cnt;
 }

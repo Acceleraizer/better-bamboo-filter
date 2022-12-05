@@ -25,8 +25,9 @@ struct Bucket {
     u8 *_bits;    /* Each fgpt is stored in a contiguous subarray along with
                    * a flag bit. See implementation for details */
     u16 _len;     /* Length of array allocated to *_bits* */
+    u8 _fgpt_size;
 
-    Bucket() { }
+    Bucket(u8 fgpt_size) {_fgpt_size = fgpt_size;}
     ~Bucket() { delete[] _bits; }
 
     /* Must be called after initialization to allocate the array.
@@ -34,25 +35,27 @@ struct Bucket {
      * including this directly in the constructor gives issues. */
     void initialize(int capacity, int fgpt_size);
 
-    bool _occupied_idx (int idx, u8 fgpt_size);
-    int _vacant_idx(u8 fgpt_size);
-    bool check_fgpt(u32 fgpt, int idx, u8 fgpt_size);
+    bool _occupied_idx (int idx);
+    int _vacant_idx();
+    bool check_fgpt(u32 fgpt, int idx);
     /* Returns the index where the first fingerprint is found */
-    int find_fgpt(u32 fgpt, u8 fgpt_size); 
-    int count_fgpt(u32 fpgt, u8 fgpt_size);
-    bool insert_fgpt(u32 fgpt, u8 fgpt_size);
-    bool remove_fgpt(u32 fgpt, u8 fgpt_size);
+    int find_fgpt(u32 fgpt); 
+    int count_fgpt(u32 fpgt);
+    bool insert_fgpt(u32 fgpt);
+    bool remove_fgpt(u32 fgpt);
 
-    void reset_fgpt_at(int idx, u8 fgpt_size);
-    u32 get_fgpt_at(int idx, u8 fgpt_size);
-    u32 get_entry_at(int idx, u8 fgpt_size);
-    u32 remove_fgpt_at(int idx, u8 fgpt_size);
-    void insert_fgpt_at(int idx, u32 fgpt, u8 fgpt_size);
+    void reset_fgpt_at(int idx);
+    u32 get_fgpt_at(int idx);
+    u32 get_entry_at(int idx);
+    u32 remove_fgpt_at(int idx);
+    void insert_fgpt_at(int idx, u32 fgpt);
 
-    vector<u32> retrieve_all(u8 fgpt_size);
-    void split_bucket(Bucket &dst, int sep_lvl, u8 fgpt_size);
+    vector<u32> retrieve_all();
+    void split_bucket(Bucket &dst, int sep_lvl);
 
-    u32 occupancy(u8 fgpt_size);
+    void dump_bucket();
+
+    u32 occupancy();
 };
 
 struct Segment {
@@ -61,13 +64,13 @@ struct Segment {
     int expansion_count;
     u8 fgpt_size;
     
-    Segment(int num_buckets, u8 fgpt_size, int fgpt_per_bucket, int expansion__count) :
+    Segment(int num_buckets, int fgpt_size, int fgpt_per_bucket, int expansion__count) :
             expansion_count(expansion__count),
             fgpt_size(fgpt_size)
     {
         if (fgpt_size != 7 && fgpt_size != 15 && fgpt_size != 23)
             throw std::runtime_error("Fgpt size not supported");
-        buckets = vector<Bucket>(num_buckets);
+        buckets = vector<Bucket>(num_buckets, fgpt_size);
         overflow = nullptr;
         for (int i=0; i<num_buckets; ++i) {
             buckets[i].initialize(fgpt_per_bucket, fgpt_size);
