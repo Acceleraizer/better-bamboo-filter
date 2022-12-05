@@ -63,6 +63,7 @@ Segment *BitTrie::retrieve(u64 str)
     return next->retrieve(str >> 1);
 }
 
+/* Variant where the depth of the segment is calculated */
 Segment *BitTrie::retrieve(u64 str, u32 &depth)
 {
     if (!(zero || one))

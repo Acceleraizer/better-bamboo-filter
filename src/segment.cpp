@@ -7,7 +7,6 @@ void Bucket::initialize(int capacity, int fgpt_size)
 {
     _len = capacity * ((fgpt_size + 7) /8);
     _bits = new u8[_len]();
-    // cout << "create " << (void*) _bits << endl;
 }
 
 
@@ -47,7 +46,6 @@ int Bucket::find_fgpt(u32 fgpt, u8 fgpt_size)
     for (u32 idx = 0; idx < _len; idx += step) {
         if (check_fgpt(fgpt, idx, fgpt_size)) {
             return idx;
-
         }
     }
     return -1;
@@ -101,6 +99,7 @@ bool Bucket::remove_fgpt(u32 fgpt, u8 fgpt_size)
 }
 
 
+/* idx is index of first bit*/
 void Bucket::reset_fgpt_at(int idx, u8 fgpt_size)
 {
     u32 step = (fgpt_size + 7) / 8;
@@ -109,7 +108,7 @@ void Bucket::reset_fgpt_at(int idx, u8 fgpt_size)
     }
 }
 
-
+/* idx is index of first bit*/
 u32 Bucket::get_entry_at(int idx, u8 fgpt_size)
 {
     u32 stored_entry = 0;
@@ -149,6 +148,7 @@ void Bucket::split_bucket(Bucket &dst, int sep_lvl, u8 fgpt_size)
             dst.insert_fgpt(entry, fgpt_size);
         }
     }
+    // cout << " " << occupancy(fgpt_size) << "+" << dst.occupancy(fgpt_size) << flush;
 }
 
 

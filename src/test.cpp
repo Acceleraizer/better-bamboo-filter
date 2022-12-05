@@ -28,11 +28,14 @@ int main()
     srand(seed);
 
     // hash_tests();
+    srand(seed);
     bamboo_tests_simple();
     // bamboo_tests_cuckoo();
+    srand(seed);
     bamboo_tests_fill();
     // bamboo_tests_larger_simple();
-    bamboo_tests_larger_fill();
+    // srand(seed);
+    // bamboo_tests_larger_fill();
 
     // cbamboo_tests_larger_count();
 
@@ -137,14 +140,22 @@ void bamboo_tests_fill()
     int elt = 0;
     
     try {
-        while (bbf.insert(elt)) {
-            if (elt % 10000 == 0) cout << elt << " " << std::flush;
+        while (bbf.insert(elt) && elt < 1500) {
+            if (elt % 1000 == 0) cout << elt << " " << std::flush;
             ++elt;
         }
     } catch (std::exception& e) {
         cout << "bucket full or something, error:" << e.what() << endl;
     }
     cout << "Occupancy: " << bbf.occupancy() << "/" << bbf.capacity() << endl;
+
+    /* Confirm that all elements are added correctly */
+
+    for (int tst = 0; tst < elt; ++tst) {
+        if (!bbf.count(tst)) {
+            cout << tst << " " << flush;
+        }
+    }
 }
 
 
@@ -256,7 +267,7 @@ void cbamboo_test_count_max()
 
 Bamboo init_bbf_default()
 {
-    int bucket_idx_len = 8;
+    int bucket_idx_len = 4;
     int fgpt_size = 7;
     int fgpt_per_bucket = 8;
     int seg_idx_base = 4;
@@ -266,7 +277,7 @@ Bamboo init_bbf_default()
 
 Bamboo init_bbf_larger()
 {
-    int bucket_idx_len = 8;
+    int bucket_idx_len = 4;
     int fgpt_size = 15;
     int fgpt_per_bucket = 8;
     int seg_idx_base = 4;

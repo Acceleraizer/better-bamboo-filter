@@ -260,7 +260,7 @@ bool Bamboo::overflow(Segment *segment, u32 seg_idx, u32 bidx1, u32 bidx2, u32 f
     if (expansion_count >= _fgpt_size) 
         throw std::runtime_error("Bamboo max expansion capacity breached");
     
-    u8 ilen = expansion_count+_seg_idx_base;
+    u8 ilen = expansion_count + _seg_idx_base;
     u32 new_idx = seg_idx | (1 << (ilen - 1));
 
     // cout << "Expanding segment " << bitset<16>(seg_idx) << " into segment " << bitset<16>(new_idx) 
@@ -275,7 +275,7 @@ bool Bamboo::overflow(Segment *segment, u32 seg_idx, u32 bidx1, u32 bidx2, u32 f
 
     for (int i = 0; i < (1 << _bucket_idx_len); i++) 
         segment->buckets[i]
-            .split_bucket(new_segment->buckets[i], expansion_count, _fgpt_size);
+            .split_bucket(new_segment->buckets[i], expansion_count-1, _fgpt_size);
     if (1<<expansion_count & fgpt) {
         segment = new_segment;
         seg_idx = new_idx;

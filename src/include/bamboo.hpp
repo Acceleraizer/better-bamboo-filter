@@ -34,8 +34,6 @@ struct Bucket {
      * including this directly in the constructor gives issues. */
     void initialize(int capacity, int fgpt_size);
 
-    // void _flip_if_big_endian(u32 &value);
-
     bool _occupied_idx (int idx, u8 fgpt_size);
     int _vacant_idx(u8 fgpt_size);
     bool check_fgpt(u32 fgpt, int idx, u8 fgpt_size);
@@ -159,13 +157,14 @@ struct Bamboo : BambooBase {
             int fgpt_per_bucket, int seg_idx_base);
     ~Bamboo();
 
-
-    inline Segment *_get_segment(u32 hash, u32 &seg_idx)
+    /* Returns the segment, and computes its index and stores it
+     * in *seg_idx* */
+    inline Segment *_get_segment(u32 hashfrag, u32 &seg_idx)
     {
         // auto t1 = std::chrono::high_resolution_clock::now();
-        seg_idx = hash;
+        seg_idx = hashfrag;
         u32 depth = 0;
-        Segment *s = _trie_head->retrieve(hash, depth);
+        Segment *s = _trie_head->retrieve(hashfrag, depth);
         seg_idx &= (1 << depth) - 1;
         // auto t2 = std::chrono::high_resolution_clock::now();
         // auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
