@@ -42,7 +42,8 @@ int main()
 
     int r;
     // int counts = 150000;
-    int reps = 100;
+    int reps = 200;
+    int universe = 1000000;
 
     auto t1 = std::chrono::high_resolution_clock::now();
     auto t2 = t1;
@@ -61,7 +62,7 @@ int main()
             t1 = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < count; ++i)
             {
-                r = rand() % 100000;
+                r = rand() % universe;
                 bbf.insert(r);
             }
             // cout << " :: expansions: " << bbf.stats._expand_count << endl;
@@ -89,7 +90,7 @@ int main()
                 t1 = std::chrono::high_resolution_clock::now();
                 for (int i = 0; i < count; ++i)
                 {
-                    r = rand() % 100000;
+                    r = rand() % universe;
                     bbf.insert(r);
                 }
                 // cout << " :: expansions: " << bbf.stats._expand_count << endl;

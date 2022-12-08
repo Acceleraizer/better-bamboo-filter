@@ -21,10 +21,10 @@ int main()
 {
     cout << "\n======\nRun tests\n======\n" << endl;
     auto seed = time(NULL);
+    /* Use to fix a known seed */
+    seed = 1670511456;
     cout << "\n ### SEED = " << seed << " ### \n" << endl;
 
-    /* Use to set seed */
-    // seed = 1670209141;
     srand(seed);
 
     // hash_tests();
@@ -83,7 +83,7 @@ void bamboo_tests_simple()
             bbf.remove(1);
             print_count_bbf(bbf, 1);
         }
-        for (int i=0; i<2*bbf._fgpt_per_bucket; ++i) {
+        for (int i=0; i<8*bbf._fgpt_per_bucket; ++i) {
             bbf.insert(2);
             bbf.insert(3);
             print_count_bbf(bbf, 2);
@@ -116,12 +116,12 @@ void bamboo_tests_cuckoo()
 
         /* fill both buckets */
         u8 alt_fgpt = fgpt ^ 2;
-        for (int i=0; i<bbf._fgpt_per_bucket; ++i) {
+        for (int i=0; i<2*bbf._fgpt_per_bucket; ++i) {
             seg->buckets[bidx1].insert_fgpt_at(i, alt_fgpt);
             seg->buckets[bidx2].insert_fgpt_at(i, alt_fgpt);
         }
 
-        for (int i=0; i< 2* bbf._fgpt_per_bucket + 1; ++i) {
+        for (int i=0; i< 5* bbf._fgpt_per_bucket + 1; ++i) {
             cout << "Inserting " << elt << ": " << endl;
             bbf.insert(elt);
         }
@@ -140,21 +140,25 @@ void bamboo_tests_fill()
     int elt = 0;
     
     try {
-        while (bbf.insert(elt)) {
-            // cout << "At " << elt << ": 438 = " << bbf.count(438) << endl;
-            if (elt % 10000 == 0) cout << elt << " " << std::flush;
+        while (elt < 2000000 && bbf.insert(elt)) {
+            if (elt % 100000 == 0) cout << elt << " " << std::flush;
             ++elt;
         }
     } catch (std::exception& e) {
         cout << "bucket full or something, error:" << e.what() << endl;
     }
-    cout << "Occupancy: " << bbf.occupancy() << "/" << bbf.capacity() << endl;
+    cout << "\nInserted: " << elt << " :: "
+     << "Occupancy: " << bbf.occupancy() << "/" << bbf.capacity() << endl;
 
     /* Confirm that all elements are added correctly */
 
+    int cnt;
     for (int tst = 0; tst < elt; ++tst) {
-        if (!bbf.count(tst)) {
-            cout << tst << " " << flush;
+        cnt = bbf.remove(tst);
+        if (!cnt) {
+            cout << "*" << tst << "* " << flush;
+        } else {
+            // cout << cnt << " ";
         }
     }
     cout << "If no new integers printed before this line, then there are no false negatives!" << endl;
@@ -199,7 +203,7 @@ void bamboo_tests_larger_fill()
     int elt = 0;
     
     try {
-        while (bbf.insert(elt)) {
+        while (elt < 5000000 && bbf.insert(elt)) {
             // if (elt >= 930) {
             //     cout << "At " << elt << ": 55 = " << bbf.count(55) ;
             //     cout << " 935 = " << bbf.count(935) << endl;
@@ -210,15 +214,21 @@ void bamboo_tests_larger_fill()
     } catch (std::exception& e) {
         cout << "bucket full or something, error:" << e.what() << endl;
     }
-    cout << "Occupancy: " << bbf.occupancy() << "/" << bbf.capacity() << endl;
+    cout << "\nInserted: " << elt << " :: "
+    << "Occupancy: " << bbf.occupancy() << "/" << bbf.capacity() << endl;
 
     /* Confirm that all elements are added correctly */
     
     for (int tst = 0; tst < elt; ++tst) {
         // if (tst % 1000000 == 0) cout << "V:" << tst << " " << std::flush;
 
-        if (!bbf.count(tst)) {
+        if (!bbf.remove(tst)) {
             cout << "*" << tst << "* " << flush;
+            u32 fgpt, seg_idx, b1, b2;
+            Segment* segment;
+            bbf._extract(tst, fgpt, seg_idx, segment, b1, b2);
+            cout << bitset<16>(fgpt) << " "
+                << seg_idx << " " << segment << " " << b1 << " " << b2 << " " << endl;
         }
     }
     cout << "If no new integers printed before this line, then there are no false negatives!" << endl;

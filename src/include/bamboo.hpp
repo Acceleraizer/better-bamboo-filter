@@ -26,8 +26,10 @@ struct Bucket {
                    * a flag bit. See implementation for details */
     u16 _len;     /* Length of array allocated to *_bits* */
     u8 _fgpt_size;
+    u8 _step;
 
-    Bucket(u8 fgpt_size) {_fgpt_size = fgpt_size;}
+    Bucket(u8 fgpt_size) {_fgpt_size = fgpt_size; 
+                          _step = (_fgpt_size + 7) / 8;}
     ~Bucket() { delete[] _bits; }
 
     /* Must be called after initialization to allocate the array.
@@ -37,25 +39,34 @@ struct Bucket {
 
     bool _occupied_idx (int idx);
     int _vacant_idx();
-    bool check_fgpt(u32 fgpt, int idx);
+    u32 count_at(int idx);
+    u32 count_fgpt_at(u32 fgpt, int idx);
     /* Returns the index where the first fingerprint is found */
     int find_fgpt(u32 fgpt); 
     int count_fgpt(u32 fpgt);
-    bool insert_fgpt(u32 fgpt);
-    bool remove_fgpt(u32 fgpt);
+    u32 insert_fgpt(u32 fgpt);
+    u32 insert_fgpt_count(u32 fgpt, u32 &count);
+    void insert_fgpt_at(int idx, u32 fgpt);
+    void insert_fgpt_count_at(int idx, u32 fgpt, u32 &count);
+    u32 remove_fgpt(u32 fgpt);
+    u32 remove_fgpt_at(int idx);
 
-    void reset_fgpt_at(int idx);
     u32 get_fgpt_at(int idx);
     u32 get_entry_at(int idx);
-    u32 remove_fgpt_at(int idx);
-    void insert_fgpt_at(int idx, u32 fgpt);
+    bool insert_entry(u32 entry);
+    void reset_entry_at(int idx);
 
-    vector<u32> retrieve_all();
+    u32 evict_fgpt_at(int idx, u32 &count);
+
+    void increment_at(int idx);
+    void decrement_at(int idx);
+
+    vector<vector<u32>> retrieve_all();
     void split_bucket(Bucket &dst, int sep_lvl);
+    u32 occupancy();
 
     void dump_bucket();
-
-    u32 occupancy();
+    static u32 entry_from_fgpt(u32 fgpt);
 };
 
 struct Segment {
@@ -132,7 +143,7 @@ struct BambooBase {
 
     void adjust_to(int elt, int cnt);
     bool _cuckoo(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, 
-            u32 fgpt, u32 chain_len);
+            u32 fgpt, u32 fgpt_cnt, u32 chain_len);
     // u32 _find_segment_idx(u32 hash);
     bool _extract(int elt, u32 &fgpt, u32 &seg_idx, Segment *&segment,
             u32 &bidx1, u32 &bidx2); 
@@ -148,7 +159,7 @@ struct BambooBase {
 
     virtual Segment *_get_segment(u32 hash, u32 &seg_idx) = 0;
     virtual bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, 
-            u32 bi_alt, u32 fgpt) = 0;
+            u32 bi_alt, u32 fgpt, u32 fgpt_cnt) = 0;
 };
 
 
@@ -176,7 +187,7 @@ struct Bamboo : BambooBase {
     }
 
     bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, 
-            u32 bi_alt, u32 fgpt) override;
+            u32 bi_alt, u32 fgpt, u32 fgpt_cnt) override;
 
     u32 occupancy();
     u32 capacity();
@@ -216,7 +227,8 @@ struct BambooOverflow : BambooBase {
 
         return s;
     }
-    bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, u32 fgpt) override;
+    bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, 
+        u32 fgpt, u32 fgpt_cnt) override;
 
     // u32 occupancy();
     // u32 capacity();
