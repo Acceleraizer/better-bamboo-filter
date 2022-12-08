@@ -16,9 +16,7 @@ bool Bucket::_occupied_idx(int idx)
     bool empty = true;
     for (u32 i = 0; i < _step; ++i) {
         empty = empty && (_bits[_step*idx + i] == 0);
-        // cout << bitset<8>(_bits[_step*idx + i]) << " " << flush;
     }
-    // cout << "Empty = " << empty << endl;
     return !empty;
 }
 
@@ -34,7 +32,8 @@ int Bucket::_vacant_idx()
     return -1;
 }
 
-u32 inline Bucket::count_at(int idx) {
+u32 inline Bucket::count_at(int idx) 
+{
     if (!_occupied_idx(idx))
         return 0;
         
@@ -42,14 +41,15 @@ u32 inline Bucket::count_at(int idx) {
 }
 
 
-void inline Bucket::increment_at(int idx) {
+void inline Bucket::increment_at(int idx) 
+{
     ++_bits[idx*_step];
 }
 
 
-void inline Bucket::decrement_at(int idx) {
+void inline Bucket::decrement_at(int idx) 
+{
     --_bits[idx*_step];
-    // cout << "decr: " << bitset<16>(get_entry_at(idx)) << endl;
 }
 
 
@@ -57,12 +57,7 @@ void inline Bucket::decrement_at(int idx) {
 u32 Bucket::count_fgpt_at(u32 fgpt, int idx)
 {
     u32 stored_fgpt = get_fgpt_at(idx);
-    // cout << bitset<16>(stored_fgpt) << " <> " << bitset<16>(fgpt) << endl;
-    if (fgpt == stored_fgpt) {
-        // cout << "Match" << endl;
-        return count_at(idx);
-    }
-    return 0;
+    return (fgpt == stored_fgpt) ? count_at(idx) : 0;
 }
 
 
@@ -97,13 +92,6 @@ void Bucket::insert_fgpt_at(int idx, u32 fgpt)
 /* Should be called on an empty index */
 void Bucket::insert_fgpt_count_at(int idx, u32 fgpt, u32 &cnt)
 {
-    // u32 num = count_fgpt_at(fgpt, idx);
-    // if (num == 1) {
-    //     cout << "SHOULD NOT HAPPEN" << endl;
-    //     increment_at(idx);
-    //     return;
-    // }
-    /* make space for count bit */
     u32 entry = entry_from_fgpt(fgpt);
     for (int i=0; i<_step; ++i) {
         _bits[idx*_step+i] = (u8) (entry & ((1 << 8) - 1));
@@ -128,14 +116,13 @@ u32 Bucket::insert_fgpt_count(u32 fgpt, u32 &count)
     /* Try to update the count of existing fgpt*/
     u32 num;
     int idx;
-    for (idx = 0; idx < _len; ++idx) {
+    for (idx = 0; idx < _len/_fgpt_size; ++idx) {
         num = count_fgpt_at(fgpt, idx);
         if (num > 0 && num < 2) {
             increment_at(idx);
             --count;
             if (count == 0)
                 return count;
-            cout << count;
         }
     }
     /* Else find empty slot*/
@@ -168,12 +155,8 @@ bool Bucket::insert_entry(u32 entry)
 u32 Bucket::remove_fgpt_at(int idx)
 {
     u32 stored_fgpt = get_fgpt_at(idx); 
-    if (!stored_fgpt)
-        return stored_fgpt;
-
     u32 count = count_at(idx);
     if (count == 1) {
-        // cout << "r";
         reset_entry_at(idx);
     }   
     else
@@ -216,7 +199,6 @@ u32 Bucket::get_entry_at(int idx)
     for (u32 i=0; i<_step; ++i) {
         stored_entry += (_bits[idx*_step+i] << (8*i));
     }
-    // cout << "Gotten: " << bitset<16>(stored_entry) << endl;
     return stored_entry;
 }
 

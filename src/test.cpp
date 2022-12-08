@@ -22,7 +22,7 @@ int main()
     cout << "\n======\nRun tests\n======\n" << endl;
     auto seed = time(NULL);
     /* Use to fix a known seed */
-    seed = 1670511456;
+    // seed = 1670511456;
     cout << "\n ### SEED = " << seed << " ### \n" << endl;
 
     srand(seed);
@@ -203,7 +203,7 @@ void bamboo_tests_larger_fill()
     int elt = 0;
     
     try {
-        while (elt < 5000000 && bbf.insert(elt)) {
+        while (elt < 9950000000 && bbf.insert(elt)) {
             // if (elt >= 930) {
             //     cout << "At " << elt << ": 55 = " << bbf.count(55) ;
             //     cout << " 935 = " << bbf.count(935) << endl;
