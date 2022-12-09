@@ -9,7 +9,7 @@ using std::cout, std::endl, std::cin;
 Bamboo init_bbf_default();
 Bamboo init_bbf_larger();
 BambooOverflow init_overflow_bbf_larger();
-Abacus init_cbbf_larger(bool is_overflow);
+Abacus init_af_larger(bool is_overflow);
 
 /* Wrap the tests in try - catch statements */
 /* Run this test with Valgrind to see memory nsage */
@@ -146,7 +146,7 @@ BambooOverflow init_overflow_bbf_larger()
 }
 
 
-Abacus init_cbbf_larger(bool is_overflow)
+Abacus init_af_larger(bool is_overflow)
 {
     int bucket_idx_len = 8;
     int fgpt_size = 15;

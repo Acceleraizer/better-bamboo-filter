@@ -5,8 +5,8 @@ using std::cout, std::endl;
 
 Bamboo init_bbf_default();
 Bamboo init_bbf_larger();
-Abacus init_cbbf_larger(bool is_overflow);
-Abacus init_cbbf_default(bool is_overflow);
+Abacus init_af_larger(bool is_overflow);
+Abacus init_af_default(bool is_overflow);
 
 void hash_tests();
 void bamboo_tests_simple();
@@ -36,10 +36,10 @@ int main()
     // bamboo_tests_simple();
     // bamboo_tests_cuckoo();
     // bamboo_tests_larger_simple();
-    // srand(seed);
-    // bamboo_tests_fill();
-    // srand(seed);
-    // bamboo_tests_larger_fill();
+    srand(seed);
+    bamboo_tests_fill();
+    srand(seed);
+    bamboo_tests_larger_fill();
 
     // srand(seed);
     // cbamboo_tests_default_count();
@@ -47,8 +47,8 @@ int main()
     // cbamboo_tests_larger_count();
     // srand(seed);
     // cbamboo_test_default_count_2();
-    srand(seed);
-    cbamboo_test_larger_count_2();
+    // srand(seed);
+    // cbamboo_test_larger_count_2();
 
     cout <<  "\n======\nTests Complete\n======\n" << endl;
 }
@@ -75,7 +75,6 @@ void hash_tests()
 void print_count_bbf(Bamboo &bbf, int elt)
 {
     cout << "count(" << elt << "): " << bbf.count(elt) << endl;
-
 }
 
 /* Bamboo tests */
@@ -253,7 +252,7 @@ void cbamboo_tests_default_count()
 {
     cout << "\n ++++ Begin counting bamboo default test ++++ \n" << endl;
 
-    Abacus cbbf = init_cbbf_default(true);
+    Abacus cbbf = init_af_default(true);
     int m = 200;
     cout << "incrementing... ";
     for (int i=0; i<m; ++i) {
@@ -293,7 +292,7 @@ void cbamboo_tests_larger_count()
 {
     cout << "\n ++++ Begin counting bamboo larger test ++++ \n" << endl;
 
-    Abacus cbbf = init_cbbf_larger(true);
+    Abacus cbbf = init_af_larger(true);
     int m = 200;
     cout << "incrementing... ";
     for (int i=0; i<m; ++i) {
@@ -334,7 +333,7 @@ void cbamboo_test_default_count_2()
     cout << "\n ++++ Begin counting bamboo count 2 test ++++ \n" << endl;
     for (int t=0; t<1; ++t)
     {
-        Abacus cbbf = init_cbbf_default(t);
+        Abacus cbbf = init_af_default(t);
         if (t == 0) 
             cout << "[ with same seeds ]" << endl;
         else 
@@ -380,7 +379,7 @@ void cbamboo_test_larger_count_2()
     cout << "\n ++++ Begin counting bamboo larger count 2 test ++++ \n" << endl;
     for (int t=0; t<1; ++t)
     {
-        Abacus cbbf = init_cbbf_larger(t);
+        Abacus cbbf = init_af_larger(t);
         if (t == 0) 
             cout << "[ with same seeds ]" << endl;
         else 
@@ -449,7 +448,7 @@ Bamboo init_bbf_larger()
 }
 
 
-Abacus init_cbbf_default(bool dif_hash)
+Abacus init_af_default(bool dif_hash)
 {
     int bucket_idx_len = 8;
     int fgpt_size = 7;
@@ -461,7 +460,7 @@ Abacus init_cbbf_default(bool dif_hash)
 }
 
 
-Abacus init_cbbf_larger(bool dif_hash)
+Abacus init_af_larger(bool dif_hash)
 {
     int bucket_idx_len = 8;
     int fgpt_size = 15;

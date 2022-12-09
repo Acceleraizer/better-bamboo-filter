@@ -6,8 +6,8 @@
 using std::cout, std::endl, std::cin;
 Bamboo init_bbf_default();
 Bamboo init_bbf_larger();
-Abacus init_cbbf_larger(bool is_overflow);
-Abacus init_cbbf_default(bool is_overflow);
+Abacus init_af_larger(bool is_overflow);
+Abacus init_af_default(bool is_overflow);
 
 
 int main()
@@ -63,7 +63,7 @@ Bamboo init_bbf_larger()
 }
 
 
-Abacus init_cbbf_default(bool dif_hash)
+Abacus init_af_default(bool dif_hash)
 {
     int bucket_idx_len = 8;
     int fgpt_size = 7;
@@ -75,7 +75,7 @@ Abacus init_cbbf_default(bool dif_hash)
 }
 
 
-Abacus init_cbbf_larger(bool dif_hash)
+Abacus init_af_larger(bool dif_hash)
 {
     int bucket_idx_len = 8;
     int fgpt_size = 15;

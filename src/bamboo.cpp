@@ -137,7 +137,7 @@ BambooOverflow::BambooOverflow(int bucket_idx_len, int fgpt_size,
     BambooBase(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base)
 {
     _expand_prompt = (int) ((double) fgpt_per_bucket * (1 << bucket_idx_len) 
-                    * 8.0);
+                    *2.0);
     _insert_count = 0;
     _next_seg_idx = 0;
     _expand_base = 0;
@@ -186,24 +186,11 @@ bool BambooBase::insert(int elt)
     u32 bidx1, bidx2, seg_idx;
     bool r = false;
     Segment *segment;
-    std::chrono::_V2::high_resolution_clock::time_point t1,t2;
-    std::chrono::_V2::system_clock::duration ns;
 
-    t1 = std::chrono::high_resolution_clock::now();
-    
     if (!_extract(elt, fgpt, seg_idx, segment, bidx1, bidx2))
         goto ret;
-    
-    // t2 = std::chrono::high_resolution_clock::now();
-    // ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
-    // stats._time += ns.count();
-
     r =  insert(elt, fgpt, seg_idx, segment, bidx1, bidx2);
 ret:
-    // t2 = std::chrono::high_resolution_clock::now();
-    // ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
-    // stats._time += ns.count();
-
     return r;
 }
 

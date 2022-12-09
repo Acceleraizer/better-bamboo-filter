@@ -53,11 +53,7 @@ int Abacus::count(int elt)
 void Abacus::increment(int elt) 
 {
     /* Do naive implementation and then optimize later */
-    u32 fgpt;
-    u32 bidx1, bidx2, seg_idx;
-    Segment *segment;
     int count;
-    int idx = -1;
     for (int i = 0; i < _depth; i++) {
         count = bamboo_layers[i]->count(elt);
         if (count == 2) {
@@ -78,7 +74,6 @@ void Abacus::increment(int elt)
 void Abacus::decrement(int elt)
 {
     /* Do naive implementation and then optimize later */
-    int count;
     for (int i = 0; i < _depth; i++) {
         if (bamboo_layers[i]->count(elt) == 2) {
             bamboo_layers[i]->remove(elt);

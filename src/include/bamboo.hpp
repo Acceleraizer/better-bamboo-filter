@@ -24,11 +24,16 @@ struct Bucket {
     u8 *_bits;    /* Each fgpt is stored in a contiguous subarray along with
                    * a flag bit. See implementation for details */
     u16 _len;     /* Length of array allocated to *_bits* */
+    u8 _fgpt_size;
     u8 _step;
 
-    Bucket(u8 fgpt_size) {_step = (fgpt_size + 7) / 8;}
+    Bucket(u8 fgpt_size) {_fgpt_size = fgpt_size; 
+                          _step = (_fgpt_size + 7) / 8;}
     ~Bucket() { delete[] _bits; }
 
+    /* Must be called after initialization to allocate the array.
+     * This is here because I have yet to study copy-semantics, and
+     * including this directly in the constructor gives issues. */
     void initialize(int capacity, int fgpt_size);
 
     bool _occupied_idx (int idx);
@@ -69,9 +74,11 @@ struct BucketCounter {
     u8 *_bits;    /* Each fgpt is stored in a contiguous subarray along with
                    * a flag bit. See implementation for details */
     u16 _len;     /* Length of array allocated to *_bits* */
+    u8 _entry_size;
     u8 _step;
 
-    BucketCounter(u8 fgpt_size) {_step = (fgpt_size + 8 + 7) / 8;}
+    BucketCounter(u8 fgpt_size) {_entry_size = fgpt_size + 8; 
+                          _step = (_entry_size + 7) / 8;}
     ~BucketCounter() { delete[] _bits; }
 
     /* Must be called after initialization to allocate the array.
@@ -113,25 +120,16 @@ struct BucketCounter {
     static u32 entry_from_fgpt(u32 fgpt);
 };
 
-struct SegmentBase {
-    int expansion_count;
-    u8 fgpt_size;
 
-    SegmentBase(int fgpt_size, int expansion_count) :
-            expansion_count(expansion_count),
-            fgpt_size(fgpt_size) {};
-    virtual ~SegmentBase() {};
-        
-    virtual u32 occupancy() = 0;
-};
-
-
-struct Segment : SegmentBase{
+struct Segment {
     vector<Bucket> buckets;
     Segment *overflow;
+    int expansion_count;
+    u8 fgpt_size;
     
-    Segment(int num_buckets, int fgpt_size, int fgpt_per_bucket, int expansion_count) :
-            SegmentBase(fgpt_size, expansion_count)
+    Segment(int num_buckets, int fgpt_size, int fgpt_per_bucket, int expansion__count) :
+            expansion_count(expansion__count),
+            fgpt_size(fgpt_size)
     {
         if (fgpt_size != 7 && fgpt_size != 15 && fgpt_size != 23)
             throw std::runtime_error("Fgpt size not supported");
@@ -146,28 +144,8 @@ struct Segment : SegmentBase{
 };
 
 
-struct SegmentCounter : SegmentBase {
-    vector<BucketCounter> buckets;
-    Segment *overflow;
-    
-    SegmentCounter(int num_buckets, int fgpt_size, int fgpt_per_bucket, int expansion__count) :
-            SegmentBase(fgpt_size, expansion_count)
-    {
-        if (fgpt_size != 7 && fgpt_size != 15 && fgpt_size != 23)
-            throw std::runtime_error("Fgpt size not supported");
-        buckets = vector<BucketCounter>(num_buckets, fgpt_size);
-        overflow = nullptr;
-        for (int i=0; i<num_buckets; ++i) {
-            buckets[i].initialize(fgpt_per_bucket, fgpt_size);
-        }
-    }
-
-    u32 occupancy();
-};
-
-
 struct BitTrie {
-    SegmentBase *ptr;
+    Segment *ptr;
 
     BitTrie *zero;
     BitTrie *one;
@@ -175,13 +153,14 @@ struct BitTrie {
     BitTrie();
     ~BitTrie();
 
-    void insert(u64 str, u8 len, SegmentBase* val);
+    void insert(u64 str, u8 len, Segment* val);
     void clear(u64 str, u8 len);
-    SegmentBase *retrieve(u64 str);
-    SegmentBase *retrieve(u64 str, u32 &depth);
+    Segment *retrieve(u64 str);
+    Segment *retrieve(u64 str, u32 &depth);
     void dump(std::string s);
     void dump();
 };
+
 
 struct BambooBase {
     int _num_segments;
@@ -260,6 +239,7 @@ struct BambooBase {
 
 
 struct Bamboo : BambooBase {
+    // unordered_map<u32, Segment*> _segments;
     BitTrie *_trie_head;
 
     Bamboo(int bucket_idx_len, int fgpt_size, 
@@ -280,14 +260,10 @@ struct Bamboo : BambooBase {
      * in *seg_idx* */
     inline Segment *_get_segment(u32 hashfrag, u32 &seg_idx)
     {
-        // auto t1 = std::chrono::high_resolution_clock::now();
         seg_idx = hashfrag;
         u32 depth = 0;
-        Segment *s = (Segment *)_trie_head->retrieve(hashfrag, depth);
+        Segment *s = _trie_head->retrieve(hashfrag, depth);
         seg_idx &= (1 << depth) - 1;
-        // auto t2 = std::chrono::high_resolution_clock::now();
-        // auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
-        // stats._time += ns.count();
         return s;
     }
 
@@ -317,20 +293,12 @@ struct BambooOverflow : BambooBase {
 
     inline Segment *_get_segment(u32 hash, u32 &seg_idx) override
     {
-        // auto t1 = std::chrono::high_resolution_clock::now();
         u32 mask = (u32)-1;
-        
-        while ((hash & mask) >= _segments.size())
-        {
+        while ((hash & mask) >= _segments.size()) {
             mask >>= 1;
         }
         seg_idx = hash & mask;
         Segment *s = _segments[seg_idx];
-
-        // auto t2 = std::chrono::high_resolution_clock::now();
-        // auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
-        // stats._time += ns.count();
-
         return s;
     }
     bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, 

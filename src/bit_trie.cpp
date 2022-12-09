@@ -10,17 +10,15 @@ BitTrie::BitTrie()
 
 BitTrie::~BitTrie()
 {
-    // cout << ptr << " " << zero << " " << one << " || " << flush;    
     if (ptr) 
         delete ptr;
-    // cout << " deleted" << " ";   
     delete zero;
     delete one;
 }
 
 
 /* The one's place of the bitstring tells us to go left or right */
-void BitTrie::insert(u64 str, u8 len, SegmentBase *val)
+void BitTrie::insert(u64 str, u8 len, Segment *val)
 {
     if (len == 0) {
         ptr = val;
@@ -45,7 +43,6 @@ void BitTrie::insert(u64 str, u8 len, SegmentBase *val)
 
 void BitTrie::clear(u64 str, u8 len)
 {
-    // cout << (u32)len;
     if (len == 0) {
         ptr = nullptr;
         return;
@@ -55,7 +52,7 @@ void BitTrie::clear(u64 str, u8 len)
 }
 
 
-SegmentBase *BitTrie::retrieve(u64 str)
+Segment *BitTrie::retrieve(u64 str)
 {
     if (!(zero || one))
         return ptr;
@@ -63,8 +60,8 @@ SegmentBase *BitTrie::retrieve(u64 str)
     return next->retrieve(str >> 1);
 }
 
-/* Variant where the depth of the SegmentBase is calculated */
-SegmentBase *BitTrie::retrieve(u64 str, u32 &depth)
+/* Variant where the depth of the segment is calculated */
+Segment *BitTrie::retrieve(u64 str, u32 &depth)
 {
     if (!(zero || one))
         return ptr;
