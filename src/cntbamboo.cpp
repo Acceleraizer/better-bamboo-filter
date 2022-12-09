@@ -7,7 +7,7 @@
 /* Counting Bamboo Implementation */
 
 
-CountingBamboo::CountingBamboo(int max_depth, int bucket_idx_len, int fgpt_size, 
+Abacus::Abacus(int max_depth, int bucket_idx_len, int fgpt_size, 
         int fgpt_per_bucket, int seg_idx_base, bool dif_hash) :
             _seg_idx_base(seg_idx_base),
             _bucket_idx_len(bucket_idx_len),
@@ -23,7 +23,7 @@ CountingBamboo::CountingBamboo(int max_depth, int bucket_idx_len, int fgpt_size,
 
 
 
-CountingBamboo::~CountingBamboo()
+Abacus::~Abacus()
 {
     for (auto it = bamboo_layers.begin(); it != bamboo_layers.end(); ++it) {
         delete *it;
@@ -31,7 +31,7 @@ CountingBamboo::~CountingBamboo()
 }
 
 
-int CountingBamboo::count(int elt) 
+int Abacus::count(int elt) 
 {
     u32 count = 0;
     u32 layer_count;
@@ -50,7 +50,7 @@ int CountingBamboo::count(int elt)
 }
 
 
-void CountingBamboo::increment(int elt) 
+void Abacus::increment(int elt) 
 {
     /* Do naive implementation and then optimize later */
     u32 fgpt;
@@ -75,7 +75,7 @@ void CountingBamboo::increment(int elt)
 }
 
 
-void CountingBamboo::decrement(int elt)
+void Abacus::decrement(int elt)
 {
     /* Do naive implementation and then optimize later */
     int count;
@@ -96,7 +96,7 @@ void CountingBamboo::decrement(int elt)
 }
 
 
-void CountingBamboo::add_layer()
+void Abacus::add_layer()
 {
     int bidxlen = _bucket_idx_len;
     int fgpt_size = _fgpt_size;
@@ -121,7 +121,7 @@ void CountingBamboo::add_layer()
 }
 
 
-void CountingBamboo::dump_abacus()
+void Abacus::dump_abacus()
 {
     cout << "Dump Abacus Start ===" << endl;
     for (int i=0; i<_depth; ++i) {
@@ -134,7 +134,7 @@ void CountingBamboo::dump_abacus()
 }
 
 
-u32 CountingBamboo::occupancy()
+u32 Abacus::occupancy()
 {
     u32 total = 0;
     for (int i=0; i<_depth; ++i)

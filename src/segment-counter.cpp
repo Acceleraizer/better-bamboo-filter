@@ -3,26 +3,23 @@
 /* bucket implementations: assuming 7, 15, 23 or 31 bit fingerprints*/
 
 
-void Bucket::initialize(int capacity, int fgpt_size)
+void BucketCounter::initialize(int capacity, int fgpt_size)
 {
-    _len = capacity * ((_fgpt_size + 7) /8);
+    _entry_size = fgpt_size + 8;
+    _step = (_entry_size + 7) / 8;
+    _len = capacity * _step;
     _bits = new u8[_len]();
-    _fgpt_size = fgpt_size;
 }
 
 /* idx is logical index */
-bool Bucket::_occupied_idx(int idx)
+bool BucketCounter::_occupied_idx(int idx)
 {
-    bool empty = true;
-    for (u32 i = 0; i < _step; ++i) {
-        empty = empty && (_bits[_step*idx + i] == 0);
-    }
-    return !empty;
+    return count_at(idx);
 }
 
 
 /* returns index of first bit of fgpt*/
-int Bucket::_vacant_idx()
+int BucketCounter::_vacant_idx()
 {   
     for (u32 idx = 0; idx <  _len/_step; ++idx) {
         if (!_occupied_idx(idx) ) {
@@ -32,36 +29,41 @@ int Bucket::_vacant_idx()
     return -1;
 }
 
-u32 inline Bucket::count_at(int idx) 
+u32 inline BucketCounter::count_at(int idx) 
 {
-    if (!_occupied_idx(idx))
-        return 0;
-        
-    return (_bits[idx*_step] % 2) + 1;
+    return _bits[idx*_step];
 }
 
 
-void inline Bucket::increment_at(int idx) 
+void inline BucketCounter::increment_at(int idx) 
 {
     ++_bits[idx*_step];
 }
 
-
-void inline Bucket::decrement_at(int idx) 
+void inline BucketCounter::decrement_at(int idx) 
 {
     --_bits[idx*_step];
 }
 
+void inline BucketCounter::add_at(int idx, int d) 
+{
+    _bits[idx*_step] += d;
+}
+
+void inline BucketCounter::sub_at(int idx, int d) 
+{
+    _bits[idx*_step] -= d;
+}
 
 /* Returns the count at this idx corresponding to fgpt */
-u32 Bucket::count_fgpt_at(u32 fgpt, int idx)
+u32 BucketCounter::count_fgpt_at(u32 fgpt, int idx)
 {
     u32 stored_fgpt = get_fgpt_at(idx);
     return (fgpt == stored_fgpt) ? count_at(idx) : 0;
 }
 
 
-int Bucket::count_fgpt(u32 fgpt)
+int BucketCounter::count_fgpt(u32 fgpt)
 {
     int cnt = 0;
     for (u32 idx = 0; idx < _len/_step; ++idx) {
@@ -71,7 +73,7 @@ int Bucket::count_fgpt(u32 fgpt)
 }
 
 /* returns logical index of fgpt*/
-int Bucket::find_fgpt(u32 fgpt)
+int BucketCounter::find_fgpt(u32 fgpt)
 {
     for (u32 idx = 0; idx < _len/_step; ++idx) {
         if (count_fgpt_at(fgpt, idx)) {
@@ -82,7 +84,7 @@ int Bucket::find_fgpt(u32 fgpt)
 }
 
 /* Should be called on an empty index */
-void Bucket::insert_fgpt_at(int idx, u32 fgpt)
+void BucketCounter::insert_fgpt_at(int idx, u32 fgpt)
 {
     u32 cnt = 1;
     insert_fgpt_count_at(idx, fgpt, cnt);
@@ -90,7 +92,7 @@ void Bucket::insert_fgpt_at(int idx, u32 fgpt)
 
 
 /* Should be called on an empty index */
-void Bucket::insert_fgpt_count_at(int idx, u32 fgpt, u32 &cnt)
+void BucketCounter::insert_fgpt_count_at(int idx, u32 fgpt, u32 &cnt)
 {
     u32 entry = entry_from_fgpt(fgpt);
     for (int i=0; i<_step; ++i) {
@@ -103,7 +105,7 @@ void Bucket::insert_fgpt_count_at(int idx, u32 fgpt, u32 &cnt)
 }
 
 
-u32 Bucket::insert_fgpt(u32 fgpt)
+u32 BucketCounter::insert_fgpt(u32 fgpt)
 {
     u32 cnt = 1;
     return insert_fgpt_count(fgpt, cnt);
@@ -111,16 +113,18 @@ u32 Bucket::insert_fgpt(u32 fgpt)
 
 
 /* Returns the remaining count */
-u32 Bucket::insert_fgpt_count(u32 fgpt, u32 &count)
+u32 BucketCounter::insert_fgpt_count(u32 fgpt, u32 &count)
 {
     /* Try to update the count of existing fgpt*/
-    u32 num;
+    u32 num, d;
     int idx;
-    for (idx = 0; idx < _len/_fgpt_size; ++idx) {
+
+    for (idx = 0; idx < _len/_step; ++idx) {
         num = count_fgpt_at(fgpt, idx);
-        if (num > 0 && num < 2) {
-            increment_at(idx);
-            --count;
+        if (num > 0 && num < (1 << 8) - 1) {
+            d = std::min(count, (1 << 8) - 1 - count);
+            add_at(idx, d);
+            count -= d;
             if (count == 0)
                 return count;
         }
@@ -130,15 +134,17 @@ u32 Bucket::insert_fgpt_count(u32 fgpt, u32 &count)
         insert_fgpt_at(idx, fgpt);
         if (--count == 0)
             return count;
-        increment_at(idx);
-        if (--count == 0)
+        d = std::min(count, (1 << 8) - 1 - count);
+        add_at(idx, d);
+        count -= d;
+        if (count == 0)
             return count;
     }
     return count;
 }
 
 
-bool Bucket::insert_entry(u32 entry)
+bool BucketCounter::insert_entry(u32 entry)
 {
     int idx = _vacant_idx();
     if (idx == -1) {
@@ -152,7 +158,7 @@ bool Bucket::insert_entry(u32 entry)
 }
 
 /* idx is logical index */
-u32 Bucket::remove_fgpt_at(int idx)
+u32 BucketCounter::remove_fgpt_at(int idx)
 {
     u32 stored_fgpt = get_fgpt_at(idx); 
     u32 count = count_at(idx);
@@ -165,7 +171,7 @@ u32 Bucket::remove_fgpt_at(int idx)
 }
 
 
-u32 Bucket::remove_fgpt(u32 fgpt)
+u32 BucketCounter::remove_fgpt(u32 fgpt)
 {
     int idx = find_fgpt(fgpt);
     if (idx == -1)
@@ -176,14 +182,14 @@ u32 Bucket::remove_fgpt(u32 fgpt)
 
 
 /* idx is logical index */
-void Bucket::reset_entry_at(int idx)
+void BucketCounter::reset_entry_at(int idx)
 {
     for (u32 i=0; i<_step; ++i) {
         _bits[idx*_step + i] = 0;
     }
 }
 
-u32 Bucket::evict_fgpt_at(int idx, u32 &count)
+u32 BucketCounter::evict_fgpt_at(int idx, u32 &count)
 {
     u32 stored_fgpt = get_fgpt_at(idx); 
     count = count_at(idx);
@@ -193,7 +199,7 @@ u32 Bucket::evict_fgpt_at(int idx, u32 &count)
 
 
 /* idx is logical index */
-u32 Bucket::get_entry_at(int idx)
+u32 BucketCounter::get_entry_at(int idx)
 {
     u32 stored_entry = 0;
     for (u32 i=0; i<_step; ++i) {
@@ -204,19 +210,19 @@ u32 Bucket::get_entry_at(int idx)
 
 
 /* idx is logical index */
-u32 Bucket::get_fgpt_at(int idx)
+u32 BucketCounter::get_fgpt_at(int idx)
 {
-    return get_entry_at(idx) >> 1;
+    return get_entry_at(idx) >> 8;
 }
 
-u32 Bucket::entry_from_fgpt(u32 fgpt) 
+u32 BucketCounter::entry_from_fgpt(u32 fgpt) 
 {
-    return fgpt << 1;
+    return fgpt << 8;
 }
 
 
 /* Moves entries if bit in fgpt is set */
-void Bucket::split_bucket(Bucket &dst, int sep_lvl) 
+void BucketCounter::split_bucket(Bucket &dst, int sep_lvl) 
 {
     u32 mask = (1 << (sep_lvl+1));
     u32 entry;
@@ -231,7 +237,7 @@ void Bucket::split_bucket(Bucket &dst, int sep_lvl)
 }
 
 
-vector<vector<u32>> Bucket::retrieve_all()
+vector<vector<u32>> BucketCounter::retrieve_all()
 {
     vector<vector<u32>> result;
     u32 fgpt, cnt;
@@ -245,7 +251,7 @@ vector<vector<u32>> Bucket::retrieve_all()
 }
 
 
-u32 Bucket::occupancy()
+u32 BucketCounter::occupancy()
 {
     u32 cnt = 0;
     for (u32 idx = 0; idx <  _len/_step; ++idx) {
@@ -255,7 +261,7 @@ u32 Bucket::occupancy()
 }
 
 
-void Bucket::dump_bucket()
+void BucketCounter::dump_bucket()
 {
     cout << "Bucket dump: ";
     u32 fgpt;
@@ -269,11 +275,13 @@ void Bucket::dump_bucket()
 
 
 
-u32 Segment::occupancy()
+u32 SegmentCounter::occupancy()
 {
     u32 cnt = 0;
-    for (Bucket &b: buckets) {
+    for (BucketCounter &b: buckets) {
         cnt += b.occupancy();
     }
     return cnt;
 }
+
+

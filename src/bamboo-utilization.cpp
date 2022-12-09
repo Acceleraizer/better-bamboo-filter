@@ -17,16 +17,16 @@ void space(BambooBase &bbf);
 int main() 
 {
     srand(0);
-    int bucket_idx_len = 8;
-    int fgpt_size = 15;
-    int fgpt_per_bucket = 8;
-    int seg_idx_base = 4;
-    Bamboo bbf(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base);
+    // int bucket_idx_len = 10;
+    // int fgpt_size = 7;
+    // int fgpt_per_bucket = 8;
+    // int seg_idx_base = 2;
+    // Bamboo bbf(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base);
 
-    // BambooOverflow bbf = init_overflow_bbf_default();
+    BambooOverflow bbf = init_overflow_bbf_default();
     // Bamboo bbf = init_bbf_default();
-    time(bbf);
-    // space(bbf);
+    // time(bbf);
+    space(bbf);
     
 }
 

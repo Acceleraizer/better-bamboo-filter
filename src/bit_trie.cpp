@@ -20,7 +20,7 @@ BitTrie::~BitTrie()
 
 
 /* The one's place of the bitstring tells us to go left or right */
-void BitTrie::insert(u64 str, u8 len, Segment *val)
+void BitTrie::insert(u64 str, u8 len, SegmentBase *val)
 {
     if (len == 0) {
         ptr = val;
@@ -55,7 +55,7 @@ void BitTrie::clear(u64 str, u8 len)
 }
 
 
-Segment *BitTrie::retrieve(u64 str)
+SegmentBase *BitTrie::retrieve(u64 str)
 {
     if (!(zero || one))
         return ptr;
@@ -63,8 +63,8 @@ Segment *BitTrie::retrieve(u64 str)
     return next->retrieve(str >> 1);
 }
 
-/* Variant where the depth of the segment is calculated */
-Segment *BitTrie::retrieve(u64 str, u32 &depth)
+/* Variant where the depth of the SegmentBase is calculated */
+SegmentBase *BitTrie::retrieve(u64 str, u32 &depth)
 {
     if (!(zero || one))
         return ptr;

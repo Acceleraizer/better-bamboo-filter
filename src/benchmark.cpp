@@ -9,7 +9,7 @@ using std::cout, std::endl, std::cin;
 Bamboo init_bbf_default();
 Bamboo init_bbf_larger();
 BambooOverflow init_overflow_bbf_larger();
-CountingBamboo init_cbbf_larger(bool is_overflow);
+Abacus init_cbbf_larger(bool is_overflow);
 
 /* Wrap the tests in try - catch statements */
 /* Run this test with Valgrind to see memory nsage */
@@ -105,7 +105,7 @@ int main()
     // srand(seed);
 
     // {
-    //     CountingBamboo cbbf = init_cbbf_larger(true);
+    //     Abacus cbbf = init_cbbf_larger(true);
 
     //     for (int i = 0; i < 100000; ++i)
     //     {
@@ -149,13 +149,13 @@ BambooOverflow init_overflow_bbf_larger()
 }
 
 
-CountingBamboo init_cbbf_larger(bool is_overflow)
+Abacus init_cbbf_larger(bool is_overflow)
 {
     int bucket_idx_len = 8;
     int fgpt_size = 15;
     int fgpt_per_bucket = 8;
     int seg_idx_base = 4;
     int max_depth = 12;
-    return CountingBamboo(max_depth, bucket_idx_len, fgpt_size, 
+    return Abacus(max_depth, bucket_idx_len, fgpt_size, 
         fgpt_per_bucket, seg_idx_base, is_overflow);
 }

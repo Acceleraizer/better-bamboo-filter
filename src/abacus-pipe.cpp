@@ -6,8 +6,8 @@
 using std::cout, std::endl, std::cin;
 Bamboo init_bbf_default();
 Bamboo init_bbf_larger();
-CountingBamboo init_cbbf_larger(bool is_overflow);
-CountingBamboo init_cbbf_default(bool is_overflow);
+Abacus init_cbbf_larger(bool is_overflow);
+Abacus init_cbbf_default(bool is_overflow);
 
 
 int main()
@@ -18,9 +18,9 @@ int main()
     int seg_idx_base = 4;
     int max_depth = 32;
     bool dif_hash = false;
-    CountingBamboo cbbf = CountingBamboo(max_depth, bucket_idx_len, fgpt_size, 
+    Abacus cbbf = Abacus(max_depth, bucket_idx_len, fgpt_size, 
         fgpt_per_bucket, seg_idx_base, dif_hash);
-        
+
 
     int num_elements;
     int elt;
@@ -63,25 +63,25 @@ Bamboo init_bbf_larger()
 }
 
 
-CountingBamboo init_cbbf_default(bool dif_hash)
+Abacus init_cbbf_default(bool dif_hash)
 {
     int bucket_idx_len = 8;
     int fgpt_size = 7;
     int fgpt_per_bucket = 8;
     int seg_idx_base = 4;
     int max_depth = 12;
-    return CountingBamboo(max_depth, bucket_idx_len, fgpt_size, 
+    return Abacus(max_depth, bucket_idx_len, fgpt_size, 
         fgpt_per_bucket, seg_idx_base, dif_hash);
 }
 
 
-CountingBamboo init_cbbf_larger(bool dif_hash)
+Abacus init_cbbf_larger(bool dif_hash)
 {
     int bucket_idx_len = 8;
     int fgpt_size = 15;
     int fgpt_per_bucket = 8;
     int seg_idx_base = 4;
     int max_depth = 32;
-    return CountingBamboo(max_depth, bucket_idx_len, fgpt_size, 
+    return Abacus(max_depth, bucket_idx_len, fgpt_size, 
         fgpt_per_bucket, seg_idx_base, dif_hash);
 }

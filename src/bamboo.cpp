@@ -137,7 +137,7 @@ BambooOverflow::BambooOverflow(int bucket_idx_len, int fgpt_size,
     BambooBase(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base)
 {
     _expand_prompt = (int) ((double) fgpt_per_bucket * (1 << bucket_idx_len) 
-                    * 0.25);
+                    * 8.0);
     _insert_count = 0;
     _next_seg_idx = 0;
     _expand_base = 0;

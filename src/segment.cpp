@@ -5,9 +5,9 @@
 
 void Bucket::initialize(int capacity, int fgpt_size)
 {
-    _len = capacity * ((_fgpt_size + 7) /8);
+    _step = (fgpt_size + 7) / 8;
+    _len = capacity * _step;
     _bits = new u8[_len]();
-    _fgpt_size = fgpt_size;
 }
 
 /* idx is logical index */
@@ -116,7 +116,7 @@ u32 Bucket::insert_fgpt_count(u32 fgpt, u32 &count)
     /* Try to update the count of existing fgpt*/
     u32 num;
     int idx;
-    for (idx = 0; idx < _len/_fgpt_size; ++idx) {
+    for (idx = 0; idx < _len/_step; ++idx) {
         num = count_fgpt_at(fgpt, idx);
         if (num > 0 && num < 2) {
             increment_at(idx);
