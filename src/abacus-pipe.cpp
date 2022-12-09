@@ -12,7 +12,15 @@ CountingBamboo init_cbbf_default(bool is_overflow);
 
 int main()
 {
-    CountingBamboo cbbf = init_cbbf_larger(false);
+    int bucket_idx_len = 8;
+    int fgpt_size = 15;
+    int fgpt_per_bucket = 8;
+    int seg_idx_base = 4;
+    int max_depth = 32;
+    bool dif_hash = false;
+    CountingBamboo cbbf = CountingBamboo(max_depth, bucket_idx_len, fgpt_size, 
+        fgpt_per_bucket, seg_idx_base, dif_hash);
+        
 
     int num_elements;
     int elt;
@@ -24,8 +32,7 @@ int main()
         cbbf.increment(elt);
     }
 
-    cout << "Abacus insertion complete. Received "
-     << cbbf.occupancy() << "/" << num_elements << " elements." << endl;
+    cout << "Abacus insertion complete. Received " << num_elements << " elements." << endl;
 
     cout << endl;
     cbbf.dump_abacus();
@@ -74,7 +81,7 @@ CountingBamboo init_cbbf_larger(bool dif_hash)
     int fgpt_size = 15;
     int fgpt_per_bucket = 8;
     int seg_idx_base = 4;
-    int max_depth = 20;
+    int max_depth = 32;
     return CountingBamboo(max_depth, bucket_idx_len, fgpt_size, 
         fgpt_per_bucket, seg_idx_base, dif_hash);
 }

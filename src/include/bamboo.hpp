@@ -20,7 +20,6 @@ typedef uint16_t u16;
 typedef uint8_t u8;
 
 
-
 struct Bucket {
     u8 *_bits;    /* Each fgpt is stored in a contiguous subarray along with
                    * a flag bit. See implementation for details */
@@ -116,6 +115,7 @@ struct BambooBase {
     int _fgpt_size;
     int _fgpt_per_bucket;
     int _seg_idx_base;
+    int _offset;
     SpookyHash _h;
     u32 _seed;
     u32 _alt_seed;
@@ -138,6 +138,11 @@ struct BambooBase {
     BambooBase(int bucket_idx_len, int fgpt_size, 
             int fgpt_per_bucket, int seg_idx_base,
             u32 seed, u32 alt_seed);
+    BambooBase(int bucket_idx_len, int fgpt_size, 
+            int fgpt_per_bucket, int seg_idx_base, int offset);
+    BambooBase(int bucket_idx_len, int fgpt_size, 
+            int fgpt_per_bucket, int seg_idx_base, int offset,
+            u32 seed, u32 alt_seed);
     virtual ~BambooBase();
 
     int count(int elt);
@@ -157,7 +162,7 @@ struct BambooBase {
     {
         u32 alt = fgpt;
         while (true) {
-            alt = (_h.Hash32(&alt, 4, _alt_seed)) & _bucket_mask;
+            alt = (_h.Hash32(&alt, 4, _alt_seed) >> _offset) & _bucket_mask;
             if (alt)
                 break;
         }
@@ -165,12 +170,18 @@ struct BambooBase {
     }
     inline u32 _compute_hash(int elt)
     {
-        return _h.Hash32(&elt, 4, _seed);
+        return _h.Hash32(&elt, 4, _seed) >> _offset;
     }
 
     virtual Segment *_get_segment(u32 hash, u32 &seg_idx) = 0;
     virtual bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, 
             u32 bi_alt, u32 fgpt, u32 fgpt_cnt) = 0;
+    
+    virtual u32 capacity() = 0;
+    virtual u32 occupancy() = 0;
+    void dump_info();
+    void dump_percentage();
+    virtual void dump_succinct() = 0;
 };
 
 
@@ -181,7 +192,12 @@ struct Bamboo : BambooBase {
     Bamboo(int bucket_idx_len, int fgpt_size, 
             int fgpt_per_bucket, int seg_idx_base);
     Bamboo(int bucket_idx_len, int fgpt_size, 
-            int fgpt_per_bucket, int seg_idx_base,
+            int fgpt_per_bucket, int seg_idx_base, int offset);
+    Bamboo(int bucket_idx_len, int fgpt_size, 
+            int fgpt_per_bucket, int seg_idx_base, 
+            u32 seed, u32 alt_seed);
+    Bamboo(int bucket_idx_len, int fgpt_size, 
+            int fgpt_per_bucket, int seg_idx_base, int offset,
             u32 seed, u32 alt_seed);
     ~Bamboo();
 
@@ -205,10 +221,9 @@ struct Bamboo : BambooBase {
     bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, 
             u32 bi_alt, u32 fgpt, u32 fgpt_cnt) override;
 
-    u32 occupancy();
-    u32 capacity();
-    void dump_info();
-    void dump_percentage();
+    u32 occupancy() override;
+    u32 capacity() override;
+    void dump_succinct() override;
 };
 
 
@@ -248,8 +263,9 @@ struct BambooOverflow : BambooBase {
     bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, 
         u32 fgpt, u32 fgpt_cnt) override;
 
-    // u32 occupancy();
-    // u32 capacity();
+    u32 occupancy() override;
+    u32 capacity() override;
+    void dump_succinct() override;
 };
 
 struct CountingBamboo {

@@ -19,10 +19,6 @@ CountingBamboo::CountingBamboo(int max_depth, int bucket_idx_len, int fgpt_size,
     _seed = rand();
     _alt_seed = rand();
     add_layer();
-    // if(_bamboo_implementation)
-        // bamboo_layers.push_back(new BambooOverflow(_bucket_idx_len, _fgpt_size, _fgpt_per_bucket, _seg_idx_base));
-    // else
-    // bamboo_layers.push_back(new Bamboo(_bucket_idx_len, _fgpt_size, _fgpt_per_bucket, _seg_idx_base));
 }
 
 
@@ -43,6 +39,8 @@ int CountingBamboo::count(int elt)
     for (int i = 0; i < _depth; i++) {
         if ((layer_count = bamboo_layers[i]->count(elt)))
             count += layer_count << i;
+        else
+            break;
         // cout << layer_count << " ";
     }
 
@@ -61,25 +59,6 @@ void CountingBamboo::increment(int elt)
     int count;
     int idx = -1;
     for (int i = 0; i < _depth; i++) {
-        // bamboo_layers[i]->_extract(elt, fgpt, seg_idx, segment, bidx1, bidx2);
-        // count = 0;
-        // if ((count = segment->buckets[bidx1].count_fgpt(fgpt))) {
-        //     idx = bidx1;
-        // }
-        // else if ((count = segment->buckets[bidx2].count_fgpt(fgpt))) {
-        //     idx = bidx2;
-        // }
-
-        // if (count == 0) {
-        //     bamboo_layers[i]->insert(elt, fgpt, seg_idx, segment, bidx1, bidx2);
-        //     return;
-        // }
-        // if (count == 1) {
-        //     segment->buckets[idx].insert_fgpt(fgpt);
-        //     return;
-        // }
-        // segment->buckets[idx].remove_fgpt(fgpt);
-
         count = bamboo_layers[i]->count(elt);
         if (count == 2) {
             bamboo_layers[i]->remove(elt);
@@ -91,10 +70,6 @@ void CountingBamboo::increment(int elt)
     if (_depth == _max_depth)
         throw std::runtime_error("Max depth reached");
 
-    // if(_bamboo_implementation)
-    //     bamboo_layers.push_back(new BambooOverflow(_bucket_idx_len, _fgpt_size, _fgpt_per_bucket, _seg_idx_base));
-    // else
-    // bamboo_layers.push_back(new Bamboo(_bucket_idx_len, _fgpt_size, _fgpt_per_bucket, _seg_idx_base));
     add_layer();
     bamboo_layers[_depth - 1]->insert(elt);
 }
@@ -127,19 +102,20 @@ void CountingBamboo::add_layer()
     int fgpt_size = _fgpt_size;
     int fgpt_pb = _fgpt_per_bucket;
     int segi_base = _seg_idx_base;
-
+    int offset = 0;
     if (_depth > 2) {
-        bidxlen = 4;
-        segi_base = 1;
+        // bidxlen = 2;
+        // segi_base = 2;
+        offset = _seg_idx_base - segi_base + _bucket_idx_len - bidxlen;
     } 
 
     if (_dif_hash) {
         bamboo_layers.push_back(
-            new Bamboo(bidxlen, fgpt_size, fgpt_pb, segi_base));
+            new Bamboo(bidxlen, fgpt_size, fgpt_pb, segi_base, offset));
     } else {
         bamboo_layers.push_back(
             new Bamboo(bidxlen, fgpt_size, fgpt_pb, 
-                segi_base, _seed, _alt_seed));
+                segi_base, offset, _seed, _alt_seed));
     }
     _depth += 1;
 }

@@ -13,7 +13,8 @@ BambooBase::BambooBase(int bucket_idx_len, int fgpt_size,
             _bucket_idx_len(bucket_idx_len),
             _fgpt_size(fgpt_size),
             _fgpt_per_bucket(fgpt_per_bucket),
-            _seg_idx_base(seg_idx_base) 
+            _seg_idx_base(seg_idx_base),
+            _offset(0)
 {
     _bucket_mask = (1<<_bucket_idx_len)-1;
     _seed = rand();
@@ -31,6 +32,42 @@ BambooBase::BambooBase(int bucket_idx_len, int fgpt_size,
             _fgpt_size(fgpt_size),
             _fgpt_per_bucket(fgpt_per_bucket),
             _seg_idx_base(seg_idx_base),
+            _offset(0),
+            _seed(seed),
+            _alt_seed(alt_seed) 
+{
+    _bucket_mask = (1<<_bucket_idx_len)-1;
+    
+    std::memset(&stats, 0, sizeof(stats));
+}
+
+
+BambooBase::BambooBase(int bucket_idx_len, int fgpt_size, 
+        int fgpt_per_bucket, int seg_idx_base, int offset) : 
+            _num_segments(1 << seg_idx_base),
+            _bucket_idx_len(bucket_idx_len),
+            _fgpt_size(fgpt_size),
+            _fgpt_per_bucket(fgpt_per_bucket),
+            _seg_idx_base(seg_idx_base),
+            _offset(offset)
+{
+    _bucket_mask = (1<<_bucket_idx_len)-1;
+    _seed = rand();
+    _alt_seed = rand();
+    
+    std::memset(&stats, 0, sizeof(stats));
+}
+
+
+BambooBase::BambooBase(int bucket_idx_len, int fgpt_size, 
+        int fgpt_per_bucket, int seg_idx_base, int offset,
+        u32 seed, u32 alt_seed) : 
+            _num_segments(1 << seg_idx_base),
+            _bucket_idx_len(bucket_idx_len),
+            _fgpt_size(fgpt_size),
+            _fgpt_per_bucket(fgpt_per_bucket),
+            _seg_idx_base(seg_idx_base),
+            _offset(offset),
             _seed(seed),
             _alt_seed(alt_seed) 
 {
@@ -51,11 +88,26 @@ Bamboo::Bamboo(int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, int seg_i
     _initialize_segments();
 }
 
+Bamboo::Bamboo(int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, int seg_idx_base,
+        int offset) 
+    : BambooBase(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base, offset)
+{
+    _initialize_segments();
+}
+
 
 Bamboo::Bamboo(int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, 
         int seg_idx_base, u32 seed, u32 alt_seed) 
     : BambooBase(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base,
         seed, alt_seed)
+{
+    _initialize_segments();
+}
+
+Bamboo::Bamboo(int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, 
+        int seg_idx_base, int offset, u32 seed, u32 alt_seed) 
+    : BambooBase(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base,
+        offset, seed, alt_seed)
 {
     _initialize_segments();
 }
@@ -84,7 +136,8 @@ BambooOverflow::BambooOverflow(int bucket_idx_len, int fgpt_size,
         int fgpt_per_bucket, int seg_idx_base) :
     BambooBase(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base)
 {
-    _expand_prompt = fgpt_per_bucket * (1 << bucket_idx_len) * 1/2;
+    _expand_prompt = (int) ((double) fgpt_per_bucket * (1 << bucket_idx_len) 
+                    * 0.25);
     _insert_count = 0;
     _next_seg_idx = 0;
     _expand_base = 0;
@@ -450,7 +503,37 @@ u32 Bamboo::capacity()
 }
 
 
-void Bamboo::dump_info()
+u32 BambooOverflow::occupancy()
+{
+    u32 occ = 0;
+    Segment *tmp;
+    for (Segment *segment: _segments) {
+        tmp = segment;
+        while (tmp) {
+            occ += tmp->occupancy();
+            tmp = tmp->overflow;
+        }
+    }
+    return occ;
+}
+
+u32 BambooOverflow::capacity()
+{
+    u32 cap = 0;
+    Segment *tmp;
+    for (Segment *segment: _segments) {
+        tmp = segment;
+        while (tmp) {
+            ++cap;
+            tmp = tmp->overflow;
+        }
+    }
+    cap *= (1 << _bucket_idx_len) * _fgpt_per_bucket;
+    return cap;
+}
+
+
+void BambooBase::dump_info()
 {
     cout << "NS:" << _num_segments << flush;
     cout << " BIL:" << _bucket_idx_len << flush;
@@ -462,8 +545,31 @@ void Bamboo::dump_info()
     cout << endl;
 }
 
-void Bamboo::dump_percentage()
+void BambooBase::dump_percentage()
 {
     double p = (double) occupancy() / capacity() * 100;
     cout << p << "% full" << endl;
+}
+
+void Bamboo::dump_succinct()
+{
+    cout << _num_segments << " ";
+    double p = (double) occupancy() / capacity();
+    cout << p << endl;
+}
+
+void BambooOverflow::dump_succinct()
+{
+    u32 seg = 0;
+    Segment *tmp;
+    for (Segment *segment: _segments) {
+        tmp = segment;
+        while (tmp) {
+            ++seg;
+            tmp = tmp->overflow;
+        }
+    }
+    cout << seg << " ";
+    double p = (double) occupancy() / capacity();
+    cout << p << endl;
 }

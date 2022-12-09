@@ -36,10 +36,10 @@ int main()
     // bamboo_tests_simple();
     // bamboo_tests_cuckoo();
     // bamboo_tests_larger_simple();
-    // srand(seed);
-    // bamboo_tests_fill();
-    // srand(seed);
-    // bamboo_tests_larger_fill();
+    srand(seed);
+    bamboo_tests_fill();
+    srand(seed);
+    bamboo_tests_larger_fill();
 
     // srand(seed);
     // cbamboo_tests_default_count();
@@ -47,8 +47,8 @@ int main()
     // cbamboo_tests_larger_count();
     // srand(seed);
     // cbamboo_test_default_count_2();
-    srand(seed);
-    cbamboo_test_larger_count_2();
+    // srand(seed);
+    // cbamboo_test_larger_count_2();
 
     cout <<  "\n======\nTests Complete\n======\n" << endl;
 }
@@ -355,6 +355,7 @@ void cbamboo_test_default_count_2()
                 if ((c = cbbf.count(elt)) != counts)
                     cout << "[" << elt << ":" << c << "] " << flush;
             }
+
             cbbf.dump_abacus();
             cout << endl << "decrementing... " << flush;
             for (int i=0; i<counts; ++i) {
@@ -388,7 +389,7 @@ void cbamboo_test_larger_count_2()
         try {
             cout << "incrementing... " << flush;
             int m = 50000;
-            int counts = 1024;
+            int counts = 512;
             int c;
             for (int i=0; i<counts; ++i) {
                 if (i % 100 == 0) 
@@ -404,10 +405,10 @@ void cbamboo_test_larger_count_2()
             }
             cbbf.dump_abacus();
             cout << endl << "decrementing... " << flush;
-            for (int i=0; i<counts; ++i) {
-                if (i % 100 == 0) 
-                    cout << i << "... " << flush;
-                for (int elt=0; elt<m; ++elt) {
+            for (int elt=0; elt<m; ++elt) {
+                if (elt % (m/10) == 0) 
+                    cout << elt << "... " << flush;
+                for (int i=0; i<counts; ++i) {
                     cbbf.decrement(elt);
                 }
             }
@@ -417,6 +418,7 @@ void cbamboo_test_larger_count_2()
                     cout << "[" << elt << ":" << c << "] " << flush;
             }
             cout << endl;
+            cbbf.dump_abacus();
         } catch (std::exception& e) {
             cout << "bucket full or something, error:" << e.what() << endl;
         }
