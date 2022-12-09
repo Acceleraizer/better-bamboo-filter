@@ -6,6 +6,7 @@ using std::cout, std::endl;
 Bamboo init_bbf_default();
 Bamboo init_bbf_larger();
 CountingBamboo init_cbbf_larger(bool is_overflow);
+CountingBamboo init_cbbf_default(bool is_overflow);
 
 void hash_tests();
 void bamboo_tests_simple();
@@ -13,7 +14,10 @@ void bamboo_tests_cuckoo();
 void bamboo_tests_fill();
 void bamboo_tests_larger_simple();
 void bamboo_tests_larger_fill();
+void cbamboo_tests_default_count();
 void cbamboo_tests_larger_count();
+void cbamboo_test_default_count_2();
+void cbamboo_test_larger_count_2();
 
 
 /* Wrap the tests in try - catch statements */
@@ -22,7 +26,7 @@ int main()
     cout << "\n======\nRun tests\n======\n" << endl;
     auto seed = time(NULL);
     /* Use to fix a known seed */
-    // seed = 1670511456;
+    // seed = 1670537243;
     cout << "\n ### SEED = " << seed << " ### \n" << endl;
 
     srand(seed);
@@ -31,13 +35,20 @@ int main()
     // srand(seed);
     // bamboo_tests_simple();
     // bamboo_tests_cuckoo();
-    srand(seed);
-    bamboo_tests_fill();
     // bamboo_tests_larger_simple();
-    srand(seed);
-    bamboo_tests_larger_fill();
+    // srand(seed);
+    // bamboo_tests_fill();
+    // srand(seed);
+    // bamboo_tests_larger_fill();
 
+    // srand(seed);
+    // cbamboo_tests_default_count();
+    // srand(seed);
     // cbamboo_tests_larger_count();
+    // srand(seed);
+    // cbamboo_test_default_count_2();
+    srand(seed);
+    cbamboo_test_larger_count_2();
 
     cout <<  "\n======\nTests Complete\n======\n" << endl;
 }
@@ -238,19 +249,20 @@ void bamboo_tests_larger_fill()
 /* Counting Bamboo tests */
 
 
-void cbamboo_tests_larger_count()
+void cbamboo_tests_default_count()
 {
-    cout << "\n ++++ Begin counting bamboo larger fill test ++++ \n" << endl;
+    cout << "\n ++++ Begin counting bamboo default test ++++ \n" << endl;
 
-    CountingBamboo cbbf = init_cbbf_larger(true);
-
-    for (int i=0; i<64; ++i) {
+    CountingBamboo cbbf = init_cbbf_default(true);
+    int m = 200;
+    cout << "incrementing... ";
+    for (int i=0; i<m; ++i) {
         cbbf.increment(1);
         cout << cbbf.count(1) << " " << flush;
     } 
-    cout << endl;
+    cout << endl << "decrementing... " ;
 
-    for (int i=0; i<64; ++i) {
+    for (int i=0; i<m; ++i) {
         cbbf.decrement(1);
         cout << cbbf.count(1) << " " << flush;
     } 
@@ -260,32 +272,155 @@ void cbamboo_tests_larger_count()
 
     /* Prints triplets of counts of 1,2,3. 
      * Expected outcome: count of 3 should always be 0. */
-    for (int i=0; i<64; ++i) {
+    m = 64;
+    for (int i=0; i<m; ++i) {
         cbbf.increment(1);
         cbbf.increment(2);
         cout << "(" << cbbf.count(1) << " " << cbbf.count(2) 
             << " " << flush << cbbf.count(3) << ") " << flush;
     } 
-    for (int i=0; i<64; ++i) {
+    for (int i=0; i<m; ++i) {
         cbbf.decrement(1);
         cbbf.decrement(2);
         cout << "(" << cbbf.count(1) << " " << cbbf.count(2) 
             << " " << flush << cbbf.count(3) << ") " << flush;
     } 
+    cout << endl;
 }
 
-void cbamboo_test_count_max()
+
+void cbamboo_tests_larger_count()
 {
-    CountingBamboo cbbf = init_cbbf_larger(false);
-    int elt = 99;
+    cout << "\n ++++ Begin counting bamboo larger test ++++ \n" << endl;
 
-    try {
-        while (true) {
+    CountingBamboo cbbf = init_cbbf_larger(true);
+    int m = 200;
+    cout << "incrementing... ";
+    for (int i=0; i<m; ++i) {
+        cbbf.increment(1);
+        cout << cbbf.count(1) << " " << flush;
+    } 
+    cout << endl << "decrementing... " ;
+
+    for (int i=0; i<m; ++i) {
+        cbbf.decrement(1);
+        cout << cbbf.count(1) << " " << flush;
+    } 
+    cout << endl;
+
+    cout << "\n Now count two elements \n" << endl;
+
+    /* Prints triplets of counts of 1,2,3. 
+     * Expected outcome: count of 3 should always be 0. */
+    m = 64;
+    for (int i=0; i<m; ++i) {
+        cbbf.increment(1);
+        cbbf.increment(2);
+        cout << "(" << cbbf.count(1) << " " << cbbf.count(2) 
+            << " " << flush << cbbf.count(3) << ") " << flush;
+    } 
+    for (int i=0; i<m; ++i) {
+        cbbf.decrement(1);
+        cbbf.decrement(2);
+        cout << "(" << cbbf.count(1) << " " << cbbf.count(2) 
+            << " " << flush << cbbf.count(3) << ") " << flush;
+    } 
+    cout << endl;
+}
+
+
+void cbamboo_test_default_count_2()
+{
+    cout << "\n ++++ Begin counting bamboo count 2 test ++++ \n" << endl;
+    for (int t=0; t<1; ++t)
+    {
+        CountingBamboo cbbf = init_cbbf_default(t);
+        if (t == 0) 
+            cout << "[ with same seeds ]" << endl;
+        else 
+            cout << "[ with different seeds ]" << endl;
+
+        try {
+            cout << "incrementing... " << flush;
+            int m = 1000;
+            int counts = 20;
+            int c;
+            for (int i=0; i<counts; ++i) {
+                for (int elt=0; elt<m; ++elt) {
+                    cbbf.increment(elt);
+                }
+            }
+            cout << "Diffs:" << endl;
+            for (int elt=0; elt<m; ++elt) {
+                if ((c = cbbf.count(elt)) != counts)
+                    cout << "[" << elt << ":" << c << "] " << flush;
+            }
+            cbbf.dump_abacus();
+            cout << endl << "decrementing... " << flush;
+            for (int i=0; i<counts; ++i) {
+                for (int elt=0; elt<m; ++elt) {
+                    cbbf.decrement(elt);
+                }
+            }
+            cout << "Diffs:" << endl;
+            for (int elt=0; elt<m; ++elt) {
+                if ((c = cbbf.count(elt)) != 0)
+                    cout << "[" << elt << ":" << c << "] " << flush;
+            }
+            cout << endl;
+        } catch (std::exception& e) {
+            cout << "bucket full or something, error:" << e.what() << endl;
         }
-    } catch (std::exception& e) {
-        cout << "bucket full or something, error:" << e.what() << endl;
     }
+}
 
+void cbamboo_test_larger_count_2()
+{
+    cout << "\n ++++ Begin counting bamboo larger count 2 test ++++ \n" << endl;
+    for (int t=0; t<1; ++t)
+    {
+        CountingBamboo cbbf = init_cbbf_larger(t);
+        if (t == 0) 
+            cout << "[ with same seeds ]" << endl;
+        else 
+            cout << "[ with different seeds ]" << endl;
+
+        try {
+            cout << "incrementing... " << flush;
+            int m = 50000;
+            int counts = 1024;
+            int c;
+            for (int i=0; i<counts; ++i) {
+                if (i % 100 == 0) 
+                    cout << i << "... " << flush;
+                for (int elt=0; elt<m; ++elt) {
+                    cbbf.increment(elt);
+                }
+            }
+            cout << "Diffs:" << endl;
+            for (int elt=0; elt<m; ++elt) {
+                if ((c = cbbf.count(elt)) != counts)
+                    cout << "[" << elt << ":" << c << "] " << flush;
+            }
+            cbbf.dump_abacus();
+            cout << endl << "decrementing... " << flush;
+            for (int i=0; i<counts; ++i) {
+                if (i % 100 == 0) 
+                    cout << i << "... " << flush;
+                for (int elt=0; elt<m; ++elt) {
+                    cbbf.decrement(elt);
+                }
+            }
+            cout << "Diffs:" << endl;
+            for (int elt=0; elt<m; ++elt) {
+                if ((c = cbbf.count(elt)) != 0)
+                    cout << "[" << elt << ":" << c << "] " << flush;
+            }
+            cout << endl;
+        } catch (std::exception& e) {
+            cout << "bucket full or something, error:" << e.what() << endl;
+        }
+    }
 }
 
 
@@ -312,7 +447,19 @@ Bamboo init_bbf_larger()
 }
 
 
-CountingBamboo init_cbbf_larger(bool is_overflow)
+CountingBamboo init_cbbf_default(bool dif_hash)
+{
+    int bucket_idx_len = 8;
+    int fgpt_size = 7;
+    int fgpt_per_bucket = 8;
+    int seg_idx_base = 4;
+    int max_depth = 12;
+    return CountingBamboo(max_depth, bucket_idx_len, fgpt_size, 
+        fgpt_per_bucket, seg_idx_base, dif_hash);
+}
+
+
+CountingBamboo init_cbbf_larger(bool dif_hash)
 {
     int bucket_idx_len = 8;
     int fgpt_size = 15;
@@ -320,5 +467,5 @@ CountingBamboo init_cbbf_larger(bool is_overflow)
     int seg_idx_base = 4;
     int max_depth = 12;
     return CountingBamboo(max_depth, bucket_idx_len, fgpt_size, 
-        fgpt_per_bucket, seg_idx_base, is_overflow);
+        fgpt_per_bucket, seg_idx_base, dif_hash);
 }

@@ -135,10 +135,15 @@ struct BambooBase {
 
     BambooBase(int bucket_idx_len, int fgpt_size, 
             int fgpt_per_bucket, int seg_idx_base);
+    BambooBase(int bucket_idx_len, int fgpt_size, 
+            int fgpt_per_bucket, int seg_idx_base,
+            u32 seed, u32 alt_seed);
     virtual ~BambooBase();
 
     int count(int elt);
     virtual bool insert(int elt);
+    virtual bool insert(int elt, u32 fgpt, u32 seg_idx, Segment *segment,
+            u32 bidx1, u32 bidx2);
     bool remove(int elt);
 
     void adjust_to(int elt, int cnt);
@@ -150,7 +155,13 @@ struct BambooBase {
 
     inline u32 _alt_bucket(u32 fgpt, u32 bidx)
     {
-        return (bidx ^ _h.Hash32(&fgpt, 4, _alt_seed)) & _bucket_mask;
+        u32 alt = fgpt;
+        while (true) {
+            alt = (_h.Hash32(&alt, 4, _alt_seed)) & _bucket_mask;
+            if (alt)
+                break;
+        }
+        return (bidx ^ alt) & _bucket_mask;
     }
     inline u32 _compute_hash(int elt)
     {
@@ -169,7 +180,12 @@ struct Bamboo : BambooBase {
 
     Bamboo(int bucket_idx_len, int fgpt_size, 
             int fgpt_per_bucket, int seg_idx_base);
+    Bamboo(int bucket_idx_len, int fgpt_size, 
+            int fgpt_per_bucket, int seg_idx_base,
+            u32 seed, u32 alt_seed);
     ~Bamboo();
+
+    void _initialize_segments();
 
     /* Returns the segment, and computes its index and stores it
      * in *seg_idx* */
@@ -191,6 +207,8 @@ struct Bamboo : BambooBase {
 
     u32 occupancy();
     u32 capacity();
+    void dump_info();
+    void dump_percentage();
 };
 
 
@@ -235,7 +253,7 @@ struct BambooOverflow : BambooBase {
 };
 
 struct CountingBamboo {
-    vector<BambooBase*> bamboo_layers;
+    vector<Bamboo*> bamboo_layers;
     int _depth;
     int _base_expn;
     
@@ -244,17 +262,27 @@ struct CountingBamboo {
     int _bucket_idx_len;
     int _fgpt_size;
     int _fgpt_per_bucket;
-    bool _bamboo_implementation; // true = BambooOverflow, false = Bamboo
+    // bool _bamboo_implementation; // true = BambooOverflow, false = Bamboo
+    bool _dif_hash;
+    /* Used if *dif_hash == false* to initialize each individual layer */
+    u32 _seed;
+    u32 _alt_seed;
 
     CountingBamboo(int max_depth, int bucket_idx_len, int fgpt_size, 
-            int fgpt_per_bucket, int seg_idx_base, bool bamboo_implementation);
+            int fgpt_per_bucket, int seg_idx_base, bool _dif_hash);
     // CountingBamboo(int base_expn, vector<int> num_segments, vector<int> buckets_per_segment,
     //         vector<int> fgpt_size, vector<int> fgpt_per_bucket);
     ~CountingBamboo();
 
     int count(int elt);
     void increment(int elt);
-    void decrement(int elt);  
+    void decrement(int elt);
+    
+    void add_layer();
+
+    u32 occupancy();
+
+    void dump_abacus();  
 };
 
 

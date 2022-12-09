@@ -249,7 +249,7 @@ u32 Bucket::occupancy()
 {
     u32 cnt = 0;
     for (u32 idx = 0; idx <  _len/_step; ++idx) {
-        cnt += count_at(idx);
+        cnt += !_occupied_idx(idx);
     }
     return cnt;
 }

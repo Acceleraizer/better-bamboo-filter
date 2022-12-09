@@ -15,16 +15,30 @@ BambooBase::BambooBase(int bucket_idx_len, int fgpt_size,
             _fgpt_per_bucket(fgpt_per_bucket),
             _seg_idx_base(seg_idx_base) 
 {
-    // cout << "Creating bamboo with " << _num_segments << " _segments" << endl; 
-    
     _bucket_mask = (1<<_bucket_idx_len)-1;
     _seed = rand();
     _alt_seed = rand();
-    // cout << "Seed = " << _seed << endl;
-    // cout << "Alt bucket seed = " << _alt_seed << endl;
     
     std::memset(&stats, 0, sizeof(stats));
 }
+
+
+BambooBase::BambooBase(int bucket_idx_len, int fgpt_size, 
+        int fgpt_per_bucket, int seg_idx_base,
+        u32 seed, u32 alt_seed) : 
+            _num_segments(1 << seg_idx_base),
+            _bucket_idx_len(bucket_idx_len),
+            _fgpt_size(fgpt_size),
+            _fgpt_per_bucket(fgpt_per_bucket),
+            _seg_idx_base(seg_idx_base),
+            _seed(seed),
+            _alt_seed(alt_seed) 
+{
+    _bucket_mask = (1<<_bucket_idx_len)-1;
+    
+    std::memset(&stats, 0, sizeof(stats));
+}
+
 
 BambooBase::~BambooBase()
 {
@@ -34,16 +48,29 @@ BambooBase::~BambooBase()
 Bamboo::Bamboo(int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, int seg_idx_base) 
     : BambooBase(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base)
 {
+    _initialize_segments();
+}
+
+
+Bamboo::Bamboo(int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, 
+        int seg_idx_base, u32 seed, u32 alt_seed) 
+    : BambooBase(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base,
+        seed, alt_seed)
+{
+    _initialize_segments();
+}
+
+
+void Bamboo::_initialize_segments()
+{
     Segment *s;
     _trie_head = new BitTrie();
     for (int idx = 0; idx < _num_segments; ++idx) {
-        s = new Segment(1 << bucket_idx_len, fgpt_size, fgpt_per_bucket, 0);
-        _trie_head->insert(idx, seg_idx_base, s);
+        s = new Segment(1 << _bucket_idx_len, _fgpt_size, _fgpt_per_bucket, 0);
+        _trie_head->insert(idx, _seg_idx_base, s);
     }
-    
-    // cout << "Trie construction complete" << endl;
-    // _trie_head->dump();
 }
+
 
 
 Bamboo::~Bamboo()
@@ -104,7 +131,7 @@ bool BambooBase::insert(int elt)
 {
     u32 fgpt;
     u32 bidx1, bidx2, seg_idx;
-    bool r = true;
+    bool r = false;
     Segment *segment;
     std::chrono::_V2::high_resolution_clock::time_point t1,t2;
     std::chrono::_V2::system_clock::duration ns;
@@ -118,15 +145,21 @@ bool BambooBase::insert(int elt)
     // ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
     // stats._time += ns.count();
 
-    r = !segment->buckets[bidx1].insert_fgpt(fgpt) 
-            || !segment->buckets[bidx2].insert_fgpt(fgpt);
-
-    r =   r || _cuckoo(segment, seg_idx, bidx1, bidx2, fgpt, 1, 1);
+    r =  insert(elt, fgpt, seg_idx, segment, bidx1, bidx2);
 ret:
     // t2 = std::chrono::high_resolution_clock::now();
     // ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
     // stats._time += ns.count();
 
+    return r;
+}
+
+bool BambooBase::insert(int elt, u32 fgpt, u32 seg_idx, Segment *segment,
+            u32 bidx1, u32 bidx2)
+{
+    bool r = !segment->buckets[bidx1].insert_fgpt(fgpt) 
+            || !segment->buckets[bidx2].insert_fgpt(fgpt)
+            || _cuckoo(segment, seg_idx, bidx1, bidx2, fgpt, 1, 1);
     return r;
 }
 
@@ -285,7 +318,7 @@ bool Bamboo::overflow(Segment *segment, u32 seg_idx, u32 bidx1, u32 bidx2,
         seg_idx = new_idx;
     }
     // cout << "After expand: occupancy = " << occupancy() << endl;
-
+    ++_num_segments;
 
     bool r = !segment->buckets[bidx1].insert_fgpt_count(fgpt, fgpt_cnt) 
         || !segment->buckets[bidx2].insert_fgpt_count(fgpt, fgpt_cnt)
@@ -416,3 +449,21 @@ u32 Bamboo::capacity()
     return _num_segments * (1 << _bucket_idx_len) * _fgpt_per_bucket;
 }
 
+
+void Bamboo::dump_info()
+{
+    cout << "NS:" << _num_segments << flush;
+    cout << " BIL:" << _bucket_idx_len << flush;
+    cout << " FS:" << _fgpt_size << flush;
+    cout << " FPB:" << _fgpt_per_bucket << flush;
+    cout << " SIB:" << _seg_idx_base << flush;
+    cout << " S:" << _seed << flush;
+    cout << " AS:" << _alt_seed << flush;
+    cout << endl;
+}
+
+void Bamboo::dump_percentage()
+{
+    double p = (double) occupancy() / capacity() * 100;
+    cout << p << "% full" << endl;
+}
