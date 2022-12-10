@@ -36,10 +36,10 @@ int main()
     // bamboo_tests_simple();
     // bamboo_tests_cuckoo();
     // bamboo_tests_larger_simple();
-    srand(seed);
-    bamboo_tests_fill();
-    srand(seed);
-    bamboo_tests_larger_fill();
+    // srand(seed);
+    // bamboo_tests_fill();
+    // srand(seed);
+    // bamboo_tests_larger_fill();
 
     // srand(seed);
     // cbamboo_tests_default_count();
@@ -47,8 +47,8 @@ int main()
     // cbamboo_tests_larger_count();
     // srand(seed);
     // cbamboo_test_default_count_2();
-    // srand(seed);
-    // cbamboo_test_larger_count_2();
+    srand(seed);
+    cbamboo_test_larger_count_2();
 
     cout <<  "\n======\nTests Complete\n======\n" << endl;
 }

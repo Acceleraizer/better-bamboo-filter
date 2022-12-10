@@ -26,6 +26,9 @@
 // slower than MD5.
 //
 
+#ifndef SPOOKYHASH
+#define SPOOKYHASH
+
 #include <stddef.h>
 
 #ifdef _MSC_VER
@@ -297,3 +300,5 @@ private:
 
 
 
+
+#endif

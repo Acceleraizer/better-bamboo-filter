@@ -70,57 +70,6 @@ struct Bucket {
 
 
 
-struct BucketCounter {
-    u8 *_bits;    /* Each fgpt is stored in a contiguous subarray along with
-                   * a flag bit. See implementation for details */
-    u16 _len;     /* Length of array allocated to *_bits* */
-    u8 _entry_size;
-    u8 _step;
-
-    BucketCounter(u8 fgpt_size) {_entry_size = fgpt_size + 8; 
-                          _step = (_entry_size + 7) / 8;}
-    ~BucketCounter() { delete[] _bits; }
-
-    /* Must be called after initialization to allocate the array.
-     * This is here because I have yet to study copy-semantics, and
-     * including this directly in the constructor gives issues. */
-    void initialize(int capacity, int fgpt_size);
-
-    bool _occupied_idx (int idx);
-    int _vacant_idx();
-    u32 count_at(int idx);
-    u32 count_fgpt_at(u32 fgpt, int idx);
-    /* Returns the index where the first fingerprint is found */
-    int find_fgpt(u32 fgpt); 
-    int count_fgpt(u32 fpgt);
-    u32 insert_fgpt(u32 fgpt);
-    u32 insert_fgpt_count(u32 fgpt, u32 &count);
-    void insert_fgpt_at(int idx, u32 fgpt);
-    void insert_fgpt_count_at(int idx, u32 fgpt, u32 &count);
-    u32 remove_fgpt(u32 fgpt);
-    u32 remove_fgpt_at(int idx);
-
-    u32 get_fgpt_at(int idx);
-    u32 get_entry_at(int idx);
-    bool insert_entry(u32 entry);
-    void reset_entry_at(int idx);
-
-    u32 evict_fgpt_at(int idx, u32 &count);
-
-    void increment_at(int idx);
-    void decrement_at(int idx);
-    void add_at(int idx, int d);
-    void sub_at(int idx, int d);
-
-    vector<vector<u32>> retrieve_all();
-    void split_bucket(Bucket &dst, int sep_lvl);
-    u32 occupancy();
-
-    void dump_bucket();
-    static u32 entry_from_fgpt(u32 fgpt);
-};
-
-
 struct Segment {
     vector<Bucket> buckets;
     Segment *overflow;
@@ -239,7 +188,6 @@ struct BambooBase {
 
 
 struct Bamboo : BambooBase {
-    // unordered_map<u32, Segment*> _segments;
     BitTrie *_trie_head;
 
     Bamboo(int bucket_idx_len, int fgpt_size, 
@@ -307,11 +255,6 @@ struct BambooOverflow : BambooBase {
     u32 occupancy() override;
     u32 capacity() override;
     void dump_succinct() override;
-};
-
-
-struct CountingBamboo {
-
 };
 
 

@@ -572,26 +572,10 @@ CountingBamboo::CountingBamboo(int bucket_idx_len, int fgpt_size, int fgpt_per_b
     _initialize_segments();
 }
 
-CountingBamboo::CountingBamboo(int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, int seg_idx_base,
-        int offset) 
-    : BambooBaseCounter(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base, offset)
-{
-    _initialize_segments();
-}
-
-
 CountingBamboo::CountingBamboo(int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, 
         int seg_idx_base, u32 seed, u32 alt_seed) 
     : BambooBaseCounter(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base,
         seed, alt_seed)
-{
-    _initialize_segments();
-}
-
-CountingBamboo::CountingBamboo(int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, 
-        int seg_idx_base, int offset, u32 seed, u32 alt_seed) 
-    : BambooBaseCounter(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base,
-        offset, seed, alt_seed)
 {
     _initialize_segments();
 }

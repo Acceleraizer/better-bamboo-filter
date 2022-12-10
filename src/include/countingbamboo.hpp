@@ -1,5 +1,5 @@
-#ifndef BAMBOO
-#define BAMBOO
+#ifndef CNT_BAMBOO
+#define CNT_BAMBOO
 
 #include <vector>
 #include <chrono>
@@ -193,12 +193,7 @@ struct CountingBamboo : BambooBaseCounter {
     CountingBamboo(int bucket_idx_len, int fgpt_size, 
             int fgpt_per_bucket, int seg_idx_base);
     CountingBamboo(int bucket_idx_len, int fgpt_size, 
-            int fgpt_per_bucket, int seg_idx_base, int offset);
-    CountingBamboo(int bucket_idx_len, int fgpt_size, 
             int fgpt_per_bucket, int seg_idx_base, 
-            u32 seed, u32 alt_seed);
-    CountingBamboo(int bucket_idx_len, int fgpt_size, 
-            int fgpt_per_bucket, int seg_idx_base, int offset,
             u32 seed, u32 alt_seed);
     ~CountingBamboo();
 
