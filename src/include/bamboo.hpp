@@ -92,6 +92,23 @@ struct Segment {
     u32 occupancy();
 };
 
+struct SegmentBalancer : Segment {
+    int _capacity;
+    vector<Bucket> buckets;
+    Segment *overflow;
+    int expansion_count;
+    u8 fgpt_size;
+    
+    SegmentBalancer(int capacity, int num_buckets, int fgpt_size, int fgpt_per_bucket, int expansion__count) 
+    : Segment(num_buckets, fgpt_size, fgpt_per_bucket, expansion__count),
+    _capacity(capacity)
+    {
+        
+    }
+
+    u32 occupancy();
+};
+
 
 struct BitTrie {
     Segment *ptr;
@@ -223,6 +240,43 @@ struct Bamboo : BambooBase {
     void dump_succinct() override;
 };
 
+struct BambooBalancer : BambooBase {
+
+    BitTrie *_trie_head;
+
+    BambooBalancer(int bucket_idx_len, int fgpt_size, 
+            int fgpt_per_bucket, int seg_idx_base);
+    ~BambooBalancer();
+
+    void _initialize_segments();
+
+    int _expand_prompt;
+    int _insert_count;
+    int _next_seg_idx;
+    int _expand_base;
+
+    vector<Segment*> _segments;
+
+    bool insert(int elt) override;
+    void expand(int seg_idx);
+
+    inline Segment *_get_segment(u32 hash, u32 &seg_idx) override
+    {
+        u32 mask = (u32)-1;
+        while ((hash & mask) >= _segments.size()) {
+            mask >>= 1;
+        }
+        seg_idx = hash & mask;
+        Segment *s = _segments[seg_idx];
+        return s;
+    }
+    bool overflow(Segment *segment, u32 seg_idx, u32 bi_main, u32 bi_alt, 
+        u32 fgpt, u32 fgpt_cnt) override;
+
+    u32 occupancy() override;
+    u32 capacity() override;
+    void dump_succinct() override;
+};
 
 struct BambooOverflow : BambooBase {
     int _expand_prompt;
@@ -256,7 +310,6 @@ struct BambooOverflow : BambooBase {
     u32 capacity() override;
     void dump_succinct() override;
 };
-
 
 struct Abacus {
     vector<Bamboo*> bamboo_layers;

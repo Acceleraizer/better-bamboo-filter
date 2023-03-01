@@ -123,7 +123,13 @@ void Bamboo::_initialize_segments()
     }
 }
 
+BambooBalancer::BambooBalancer(int bucket_idx_len, int fgpt_size, int fgpt_per_bucket, int seg_idx_base) 
+    : BambooBase(bucket_idx_len, fgpt_size, fgpt_per_bucket, seg_idx_base)
+{
 
+}
+
+ 
 
 Bamboo::~Bamboo()
 {
